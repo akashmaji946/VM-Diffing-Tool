@@ -22,8 +22,13 @@ def main():
     args = parser.parse_args()
 
     try:
+
+        # get entries from vmtool
         entries = vmtool.list_files_with_metadata(args.file, verbose=args.verbose)
+        
+        # write entries to file
         vmtool.write_files_with_metadata(entries, args.out)
+
         if args.verbose:
             print_entries(entries)
         print(f"\nFile listing saved to: {args.out}")

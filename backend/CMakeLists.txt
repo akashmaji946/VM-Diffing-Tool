@@ -41,6 +41,7 @@ add_subdirectory(pybind11)
 # The first argument, "vmtool", is the name you will use in Python: import vmtool
 pybind11_add_module(vmtool SHARED
     main.cpp
+    src/VMTool.cpp
 )
 
 # --- Link Libraries ---
@@ -51,7 +52,8 @@ target_link_libraries(vmtool PRIVATE
 )
 
 # Add the include directory for libguestfs so the compiler can find its headers.
-target_include_directories(vmtool PRIVATE
+target_include_directories(vmtool PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${GUESTFS_INCLUDE_DIRS}
 )
 
