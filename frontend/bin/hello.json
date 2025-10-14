@@ -1,0 +1,778 @@
+{
+  "files_count": 108028,
+  "dirs_count": 15595,
+  "total_file_bytes": 6910172602,
+  "total_dir_bytes": 65994752,
+  "total_bytes": 6976167354,
+  "users_total": 41,
+  "users_with_files": 8,
+  "per_user": [
+    {
+      "uid": 0,
+      "user": "root",
+      "files": 107922,
+      "dirs": 15454,
+      "bytes": 6881662662
+    },
+    {
+      "uid": 104,
+      "user": "_apt",
+      "files": 2,
+      "dirs": 4,
+      "bytes": 23342515
+    },
+    {
+      "uid": 1000,
+      "user": "akash",
+      "files": 46,
+      "dirs": 82,
+      "bytes": 3402698
+    },
+    {
+      "uid": 6,
+      "user": "man",
+      "files": 50,
+      "dirs": 33,
+      "bytes": 1028750
+    },
+    {
+      "uid": 102,
+      "user": "syslog",
+      "files": 4,
+      "dirs": 1,
+      "bytes": 690477
+    },
+    {
+      "uid": 116,
+      "user": "colord",
+      "files": 2,
+      "dirs": 3,
+      "bytes": 45056
+    },
+    {
+      "uid": 121,
+      "user": "gdm",
+      "files": 1,
+      "dirs": 6,
+      "bytes": 444
+    },
+    {
+      "uid": 1,
+      "user": "daemon",
+      "files": 0,
+      "dirs": 0,
+      "bytes": 0
+    },
+    {
+      "uid": 62583,
+      "user": "uid_62583",
+      "files": 1,
+      "dirs": 2,
+      "bytes": 0
+    },
+    {
+      "uid": 13,
+      "user": "proxy",
+      "files": 0,
+      "dirs": 0,
+      "bytes": 0
+    },
+    {
+      "uid": 118,
+      "user": "geoclue",
+      "files": 0,
+      "dirs": 2,
+      "bytes": 0
+    },
+    {
+      "uid": 100,
+      "user": "systemd-network",
+      "files": 0,
+      "dirs": 3,
+      "bytes": 0
+    },
+    {
+      "uid": 41,
+      "user": "gnats",
+      "files": 0,
+      "dirs": 0,
+      "bytes": 0
+    },
+    {
+      "uid": 110,
+      "user": "cups-pk-helper",
+      "files": 0,
+      "dirs": 0,
+      "bytes": 0
+    },
+    {
+      "uid": 101,
+      "user": "systemd-resolve",
+      "files": 0,
+      "dirs": 0,
+      "bytes": 0
+    },
+    {
+      "uid": 65534,
+      "user": "nobody",
+      "files": 0,
+      "dirs": 0,
+      "bytes": 0
+    },
+    {
+      "uid": 103,
+      "user": "messagebus",
+      "files": 0,
+      "dirs": 0,
+      "bytes": 0
+    },
+    {
+      "uid": 105,
+      "user": "uuidd",
+      "files": 0,
+      "dirs": 0,
+      "bytes": 0
+    },
+    {
+      "uid": 106,
+      "user": "avahi-autoipd",
+      "files": 0,
+      "dirs": 1,
+      "bytes": 0
+    },
+    {
+      "uid": 107,
+      "user": "usbmux",
+      "files": 0,
+      "dirs": 0,
+      "bytes": 0
+    },
+    {
+      "uid": 108,
+      "user": "dnsmasq",
+      "files": 0,
+      "dirs": 1,
+      "bytes": 0
+    },
+    {
+      "uid": 109,
+      "user": "rtkit",
+      "files": 0,
+      "dirs": 0,
+      "bytes": 0
+    },
+    {
+      "uid": 117,
+      "user": "hplip",
+      "files": 0,
+      "dirs": 1,
+      "bytes": 0
+    },
+    {
+      "uid": 8,
+      "user": "mail",
+      "files": 0,
+      "dirs": 0,
+      "bytes": 0
+    },
+    {
+      "uid": 115,
+      "user": "avahi",
+      "files": 0,
+      "dirs": 0,
+      "bytes": 0
+    },
+    {
+      "uid": 114,
+      "user": "saned",
+      "files": 0,
+      "dirs": 0,
+      "bytes": 0
+    },
+    {
+      "uid": 113,
+      "user": "kernoops",
+      "files": 0,
+      "dirs": 0,
+      "bytes": 0
+    },
+    {
+      "uid": 112,
+      "user": "whoopsie",
+      "files": 0,
+      "dirs": 0,
+      "bytes": 0
+    },
+    {
+      "uid": 111,
+      "user": "speech-dispatcher",
+      "files": 0,
+      "dirs": 2,
+      "bytes": 0
+    },
+    {
+      "uid": 10,
+      "user": "uucp",
+      "files": 0,
+      "dirs": 0,
+      "bytes": 0
+    },
+    {
+      "uid": 39,
+      "user": "irc",
+      "files": 0,
+      "dirs": 0,
+      "bytes": 0
+    },
+    {
+      "uid": 9,
+      "user": "news",
+      "files": 0,
+      "dirs": 0,
+      "bytes": 0
+    },
+    {
+      "uid": 38,
+      "user": "list",
+      "files": 0,
+      "dirs": 0,
+      "bytes": 0
+    },
+    {
+      "uid": 119,
+      "user": "pulse",
+      "files": 0,
+      "dirs": 0,
+      "bytes": 0
+    },
+    {
+      "uid": 33,
+      "user": "www-data",
+      "files": 0,
+      "dirs": 0,
+      "bytes": 0
+    },
+    {
+      "uid": 4,
+      "user": "sync",
+      "files": 0,
+      "dirs": 0,
+      "bytes": 0
+    },
+    {
+      "uid": 7,
+      "user": "lp",
+      "files": 0,
+      "dirs": 0,
+      "bytes": 0
+    },
+    {
+      "uid": 5,
+      "user": "games",
+      "files": 0,
+      "dirs": 0,
+      "bytes": 0
+    },
+    {
+      "uid": 34,
+      "user": "backup",
+      "files": 0,
+      "dirs": 0,
+      "bytes": 0
+    },
+    {
+      "uid": 3,
+      "user": "sys",
+      "files": 0,
+      "dirs": 0,
+      "bytes": 0
+    },
+    {
+      "uid": 120,
+      "user": "gnome-initial-setup",
+      "files": 0,
+      "dirs": 0,
+      "bytes": 0
+    },
+    {
+      "uid": 2,
+      "user": "bin",
+      "files": 0,
+      "dirs": 0,
+      "bytes": 0
+    }
+  ],
+  "groups_total": 66,
+  "groups_with_files": 20,
+  "per_group": [
+    {
+      "gid": 0,
+      "group": "root",
+      "files": 107885,
+      "dirs": 15430,
+      "bytes": 6856942062
+    },
+    {
+      "gid": 65534,
+      "group": "nogroup",
+      "files": 2,
+      "dirs": 1,
+      "bytes": 23342515
+    },
+    {
+      "gid": 101,
+      "group": "systemd-journal",
+      "files": 2,
+      "dirs": 2,
+      "bytes": 16777216
+    },
+    {
+      "gid": 109,
+      "group": "mlocate",
+      "files": 4,
+      "dirs": 0,
+      "bytes": 6533459
+    },
+    {
+      "gid": 1000,
+      "group": "akash",
+      "files": 46,
+      "dirs": 82,
+      "bytes": 3402698
+    },
+    {
+      "gid": 12,
+      "group": "man",
+      "files": 50,
+      "dirs": 33,
+      "bytes": 1028750
+    },
+    {
+      "gid": 4,
+      "group": "adm",
+      "files": 6,
+      "dirs": 2,
+      "bytes": 720309
+    },
+    {
+      "gid": 30,
+      "group": "dip",
+      "files": 3,
+      "dirs": 3,
+      "bytes": 380349
+    },
+    {
+      "gid": 115,
+      "group": "ssh",
+      "files": 1,
+      "dirs": 0,
+      "bytes": 362640
+    },
+    {
+      "gid": 43,
+      "group": "utmp",
+      "files": 4,
+      "dirs": 0,
+      "bytes": 293828
+    },
+    {
+      "gid": 42,
+      "group": "shadow",
+      "files": 10,
+      "dirs": 0,
+      "bytes": 170277
+    },
+    {
+      "gid": 5,
+      "group": "tty",
+      "files": 4,
+      "dirs": 0,
+      "bytes": 73784
+    },
+    {
+      "gid": 121,
+      "group": "colord",
+      "files": 2,
+      "dirs": 3,
+      "bytes": 45056
+    },
+    {
+      "gid": 107,
+      "group": "messagebus",
+      "files": 1,
+      "dirs": 0,
+      "bytes": 42992
+    },
+    {
+      "gid": 105,
+      "group": "crontab",
+      "files": 1,
+      "dirs": 1,
+      "bytes": 39352
+    },
+    {
+      "gid": 8,
+      "group": "mail",
+      "files": 1,
+      "dirs": 2,
+      "bytes": 14336
+    },
+    {
+      "gid": 110,
+      "group": "ssl-cert",
+      "files": 1,
+      "dirs": 2,
+      "bytes": 1704
+    },
+    {
+      "gid": 7,
+      "group": "lp",
+      "files": 3,
+      "dirs": 8,
+      "bytes": 831
+    },
+    {
+      "gid": 125,
+      "group": "gdm",
+      "files": 1,
+      "dirs": 7,
+      "bytes": 444
+    },
+    {
+      "gid": 102,
+      "group": "systemd-network",
+      "files": 0,
+      "dirs": 3,
+      "bytes": 0
+    },
+    {
+      "gid": 126,
+      "group": "sambashare",
+      "files": 0,
+      "dirs": 0,
+      "bytes": 0
+    },
+    {
+      "gid": 100,
+      "group": "users",
+      "files": 0,
+      "dirs": 0,
+      "bytes": 0
+    },
+    {
+      "gid": 44,
+      "group": "video",
+      "files": 0,
+      "dirs": 0,
+      "bytes": 0
+    },
+    {
+      "gid": 45,
+      "group": "sasl",
+      "files": 0,
+      "dirs": 0,
+      "bytes": 0
+    },
+    {
+      "gid": 2,
+      "group": "bin",
+      "files": 0,
+      "dirs": 0,
+      "bytes": 0
+    },
+    {
+      "gid": 117,
+      "group": "whoopsie",
+      "files": 0,
+      "dirs": 2,
+      "bytes": 0
+    },
+    {
+      "gid": 116,
+      "group": "lpadmin",
+      "files": 0,
+      "dirs": 1,
+      "bytes": 0
+    },
+    {
+      "gid": 103,
+      "group": "systemd-resolve",
+      "files": 0,
+      "dirs": 0,
+      "bytes": 0
+    },
+    {
+      "gid": 113,
+      "group": "bluetooth",
+      "files": 0,
+      "dirs": 0,
+      "bytes": 0
+    },
+    {
+      "gid": 104,
+      "group": "input",
+      "files": 0,
+      "dirs": 0,
+      "bytes": 0
+    },
+    {
+      "gid": 46,
+      "group": "plugdev",
+      "files": 0,
+      "dirs": 0,
+      "bytes": 0
+    },
+    {
+      "gid": 62583,
+      "group": "gid_62583",
+      "files": 1,
+      "dirs": 2,
+      "bytes": 0
+    },
+    {
+      "gid": 50,
+      "group": "staff",
+      "files": 0,
+      "dirs": 6,
+      "bytes": 0
+    },
+    {
+      "gid": 106,
+      "group": "syslog",
+      "files": 0,
+      "dirs": 1,
+      "bytes": 0
+    },
+    {
+      "gid": 108,
+      "group": "netdev",
+      "files": 0,
+      "dirs": 0,
+      "bytes": 0
+    },
+    {
+      "gid": 114,
+      "group": "rtkit",
+      "files": 0,
+      "dirs": 0,
+      "bytes": 0
+    },
+    {
+      "gid": 111,
+      "group": "uuidd",
+      "files": 0,
+      "dirs": 0,
+      "bytes": 0
+    },
+    {
+      "gid": 112,
+      "group": "avahi-autoipd",
+      "files": 0,
+      "dirs": 1,
+      "bytes": 0
+    },
+    {
+      "gid": 13,
+      "group": "proxy",
+      "files": 0,
+      "dirs": 0,
+      "bytes": 0
+    },
+    {
+      "gid": 124,
+      "group": "pulse-access",
+      "files": 0,
+      "dirs": 0,
+      "bytes": 0
+    },
+    {
+      "gid": 123,
+      "group": "pulse",
+      "files": 0,
+      "dirs": 0,
+      "bytes": 0
+    },
+    {
+      "gid": 122,
+      "group": "geoclue",
+      "files": 0,
+      "dirs": 2,
+      "bytes": 0
+    },
+    {
+      "gid": 40,
+      "group": "src",
+      "files": 0,
+      "dirs": 0,
+      "bytes": 0
+    },
+    {
+      "gid": 27,
+      "group": "sudo",
+      "files": 0,
+      "dirs": 0,
+      "bytes": 0
+    },
+    {
+      "gid": 26,
+      "group": "tape",
+      "files": 0,
+      "dirs": 0,
+      "bytes": 0
+    },
+    {
+      "gid": 25,
+      "group": "floppy",
+      "files": 0,
+      "dirs": 0,
+      "bytes": 0
+    },
+    {
+      "gid": 24,
+      "group": "cdrom",
+      "files": 0,
+      "dirs": 0,
+      "bytes": 0
+    },
+    {
+      "gid": 22,
+      "group": "voice",
+      "files": 0,
+      "dirs": 0,
+      "bytes": 0
+    },
+    {
+      "gid": 21,
+      "group": "fax",
+      "files": 0,
+      "dirs": 0,
+      "bytes": 0
+    },
+    {
+      "gid": 20,
+      "group": "dialout",
+      "files": 0,
+      "dirs": 0,
+      "bytes": 0
+    },
+    {
+      "gid": 15,
+      "group": "kmem",
+      "files": 0,
+      "dirs": 0,
+      "bytes": 0
+    },
+    {
+      "gid": 29,
+      "group": "audio",
+      "files": 0,
+      "dirs": 1,
+      "bytes": 0
+    },
+    {
+      "gid": 118,
+      "group": "scanner",
+      "files": 0,
+      "dirs": 0,
+      "bytes": 0
+    },
+    {
+      "gid": 41,
+      "group": "gnats",
+      "files": 0,
+      "dirs": 0,
+      "bytes": 0
+    },
+    {
+      "gid": 1,
+      "group": "daemon",
+      "files": 0,
+      "dirs": 0,
+      "bytes": 0
+    },
+    {
+      "gid": 60,
+      "group": "games",
+      "files": 0,
+      "dirs": 0,
+      "bytes": 0
+    },
+    {
+      "gid": 119,
+      "group": "saned",
+      "files": 0,
+      "dirs": 0,
+      "bytes": 0
+    },
+    {
+      "gid": 120,
+      "group": "avahi",
+      "files": 0,
+      "dirs": 0,
+      "bytes": 0
+    },
+    {
+      "gid": 3,
+      "group": "sys",
+      "files": 0,
+      "dirs": 0,
+      "bytes": 0
+    },
+    {
+      "gid": 33,
+      "group": "www-data",
+      "files": 0,
+      "dirs": 0,
+      "bytes": 0
+    },
+    {
+      "gid": 34,
+      "group": "backup",
+      "files": 0,
+      "dirs": 0,
+      "bytes": 0
+    },
+    {
+      "gid": 6,
+      "group": "disk",
+      "files": 0,
+      "dirs": 0,
+      "bytes": 0
+    },
+    {
+      "gid": 37,
+      "group": "operator",
+      "files": 0,
+      "dirs": 0,
+      "bytes": 0
+    },
+    {
+      "gid": 38,
+      "group": "list",
+      "files": 0,
+      "dirs": 0,
+      "bytes": 0
+    },
+    {
+      "gid": 9,
+      "group": "news",
+      "files": 0,
+      "dirs": 0,
+      "bytes": 0
+    },
+    {
+      "gid": 39,
+      "group": "irc",
+      "files": 0,
+      "dirs": 0,
+      "bytes": 0
+    },
+    {
+      "gid": 10,
+      "group": "uucp",
+      "files": 0,
+      "dirs": 0,
+      "bytes": 0
+    }
+  ]
+}

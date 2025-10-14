@@ -10,6 +10,9 @@
 #include <iomanip>
 #include <sstream>
 #include <vector>
+#include <unordered_map>
+#include <map>
+#include <sys/stat.h>
 
 namespace py = pybind11;
 
@@ -210,6 +213,271 @@ void write_files_with_metadata(py::list entries, const std::string &output_file)
             << std::setw(10) << perms << ' '
             << std::setw(20) << mtime << ' ' << path << '\n';
     }
+}
+
+// Summary metadata for a QCOW2 disk: counts and sizes, including per-user
+py::dict get_meta_data(const std::string &disk_path, bool verbose) {
+    py::dict out;
+
+    guestfs_h *g = guestfs_create();
+    if (!g) {
+        throw std::runtime_error("Failed to create guestfs handle");
+    }
+
+    if (guestfs_add_drive_ro(g, disk_path.c_str()) == -1) {
+        guestfs_close(g);
+        throw std::runtime_error("guestfs_add_drive_ro failed");
+    }
+
+    if (guestfs_launch(g) == -1) {
+        guestfs_close(g);
+        throw std::runtime_error("guestfs_launch failed");
+    }
+
+    // Inspect and mount
+    char **roots = guestfs_inspect_os(g);
+    if (!roots || !roots[0]) {
+        if (roots) free_string_list(roots);
+        guestfs_shutdown(g);
+        guestfs_close(g);
+        throw std::runtime_error("No OS found in image");
+    }
+
+    for (size_t i = 0; roots[i] != nullptr; ++i) {
+        const char *root = roots[i];
+        char **mpdev = guestfs_inspect_get_mountpoints(g, root);
+        if (!mpdev) continue;
+        struct MP { std::string mountpoint; std::string device; };
+        std::vector<MP> mps;
+        for (size_t j = 0; mpdev[j] && mpdev[j+1]; j += 2) {
+            mps.push_back(MP{mpdev[j], mpdev[j+1]});
+        }
+        free_string_list(mpdev);
+        std::sort(mps.begin(), mps.end(), [](const MP &a, const MP &b){
+            return a.mountpoint.size() < b.mountpoint.size();
+        });
+        for (const auto &p : mps) {
+            (void) guestfs_mount_ro(g, p.device.c_str(), p.mountpoint.c_str());
+        }
+    }
+
+    // Parse /etc/passwd for users
+    std::unordered_map<long long, std::string> uid_to_user;
+    try {
+        char *passwd = guestfs_cat(g, "/etc/passwd");
+        if (passwd) {
+            std::string content(passwd);
+            free(passwd);
+            std::istringstream iss(content);
+            std::string line;
+            while (std::getline(iss, line)) {
+                if (line.empty() || line[0] == '#') continue;
+                // Format: name:x:uid:gid:gecos:home:shell
+                std::vector<std::string> fields;
+                std::string f;
+                std::istringstream ls(line);
+                while (std::getline(ls, f, ':')) fields.push_back(f);
+                if (fields.size() >= 3) {
+                    try {
+                        long long uid = std::stoll(fields[2]);
+                        uid_to_user[uid] = fields[0];
+                    } catch (...) {}
+                }
+            }
+        }
+    } catch (...) {
+        // ignore parsing errors
+    }
+
+    // Parse /etc/group for groups
+    std::unordered_map<long long, std::string> gid_to_group;
+    try {
+        char *group = guestfs_cat(g, "/etc/group");
+        if (group) {
+            std::string content(group);
+            free(group);
+            std::istringstream iss(content);
+            std::string line;
+            while (std::getline(iss, line)) {
+                if (line.empty() || line[0] == '#') continue;
+                // Format: name:x:gid:members
+                std::vector<std::string> fields;
+                std::string f;
+                std::istringstream ls(line);
+                while (std::getline(ls, f, ':')) fields.push_back(f);
+                if (fields.size() >= 3) {
+                    try {
+                        long long gid = std::stoll(fields[2]);
+                        gid_to_group[gid] = fields[0];
+                    } catch (...) {}
+                }
+            }
+        }
+    } catch (...) {
+        // ignore parsing errors
+    }
+
+    // Traverse filesystem
+    char **paths = guestfs_find(g, "/");
+    if (!paths) {
+        guestfs_umount_all(g);
+        guestfs_shutdown(g);
+        guestfs_close(g);
+        throw std::runtime_error("guestfs_find failed");
+    }
+
+    long long files_count = 0;
+    long long dirs_count = 0;
+    long long total_file_bytes = 0;
+    long long total_dir_bytes = 0;
+    std::unordered_map<long long, long long> per_uid_bytes;
+    std::unordered_map<long long, long long> per_uid_files;
+    std::unordered_map<long long, long long> per_uid_dirs;
+    std::unordered_map<long long, long long> per_gid_bytes;
+    std::unordered_map<long long, long long> per_gid_files;
+    std::unordered_map<long long, long long> per_gid_dirs;
+
+    for (size_t k = 0; paths[k] != nullptr; ++k) {
+        std::string path_component = paths[k];
+        std::string full_path = (path_component == ".") ? std::string("/") : std::string("/") + path_component;
+
+        struct guestfs_statns *st = guestfs_statns(g, full_path.c_str());
+        if (!st) continue;
+
+        uint32_t mode = static_cast<uint32_t>(st->st_mode);
+        bool is_dir = (S_ISDIR(mode));
+        bool is_reg = (S_ISREG(mode));
+        long long uid = static_cast<long long>(st->st_uid);
+        long long gid = static_cast<long long>(st->st_gid);
+        if (is_dir) {
+            dirs_count++;
+            long long dsz = static_cast<long long>(st->st_size);
+            if (dsz > 0) total_dir_bytes += dsz;
+            per_uid_dirs[uid] += 1;
+            per_gid_dirs[gid] += 1;
+        } else if (is_reg) {
+            files_count++;
+            long long sz = static_cast<long long>(st->st_size);
+            if (sz > 0) total_file_bytes += sz;
+            per_uid_bytes[uid] += std::max<long long>(0, sz);
+            per_uid_files[uid] += 1;
+            per_gid_bytes[gid] += std::max<long long>(0, sz);
+            per_gid_files[gid] += 1;
+        }
+        guestfs_free_statns(st);
+
+        if (verbose && (k % 5000 == 0)) {
+            py::print("Processed:", k);
+        }
+    }
+
+    // Prepare per-user list: include all users from /etc/passwd even if zero; sort by bytes desc
+    std::vector<std::pair<long long, long long>> order_users;
+    order_users.reserve(per_uid_bytes.size() + uid_to_user.size());
+    // Seed with all known users to ensure presence
+    for (const auto &kv : uid_to_user) {
+        long long uid = kv.first;
+        long long bytes = per_uid_bytes.count(uid) ? per_uid_bytes[uid] : 0;
+        order_users.emplace_back(uid, bytes);
+    }
+    // Add any extra uids seen in ownership but not in passwd
+    for (const auto &kv : per_uid_bytes) {
+        if (!uid_to_user.count(kv.first)) order_users.emplace_back(kv.first, kv.second);
+    }
+    std::sort(order_users.begin(), order_users.end(), [](auto &a, auto &b){ return a.second > b.second; });
+
+    py::list per_user_list;
+    for (const auto &kv : order_users) {
+        long long uid = kv.first;
+        long long bytes = kv.second;
+        long long nfiles = per_uid_files.count(uid) ? per_uid_files[uid] : 0;
+        long long ndirs  = per_uid_dirs.count(uid) ? per_uid_dirs[uid] : 0;
+        py::dict row;
+        row["uid"] = py::int_(uid);
+        row["user"] = py::str(uid_to_user.count(uid) ? uid_to_user[uid] : std::string("uid_") + std::to_string(uid));
+        row["files"] = py::int_(nfiles);
+        row["dirs"]  = py::int_(ndirs);
+        row["bytes"] = py::int_(bytes);
+        per_user_list.append(row);
+    }
+
+    // Prepare per-group list: include all groups from /etc/group even if zero; sort by bytes desc
+    std::vector<std::pair<long long, long long>> order_groups;
+    order_groups.reserve(per_gid_bytes.size() + gid_to_group.size());
+    for (const auto &kv : gid_to_group) {
+        long long gid = kv.first;
+        long long bytes = per_gid_bytes.count(gid) ? per_gid_bytes[gid] : 0;
+        order_groups.emplace_back(gid, bytes);
+    }
+    for (const auto &kv : per_gid_bytes) {
+        if (!gid_to_group.count(kv.first)) order_groups.emplace_back(kv.first, kv.second);
+    }
+    std::sort(order_groups.begin(), order_groups.end(), [](auto &a, auto &b){ return a.second > b.second; });
+
+    py::list per_group_list;
+    for (const auto &kv : order_groups) {
+        long long gid = kv.first;
+        long long bytes = kv.second;
+        long long nfiles = per_gid_files.count(gid) ? per_gid_files[gid] : 0;
+        long long ndirs  = per_gid_dirs.count(gid) ? per_gid_dirs[gid] : 0;
+        py::dict row;
+        row["gid"] = py::int_(gid);
+        row["group"] = py::str(gid_to_group.count(gid) ? gid_to_group[gid] : std::string("gid_") + std::to_string(gid));
+        row["files"] = py::int_(nfiles);
+        row["dirs"]  = py::int_(ndirs);
+        row["bytes"] = py::int_(bytes);
+        per_group_list.append(row);
+    }
+
+    out["files_count"] = py::int_(files_count);
+    out["dirs_count"] = py::int_(dirs_count);
+    out["total_file_bytes"] = py::int_(total_file_bytes);
+    out["total_dir_bytes"] = py::int_(total_dir_bytes);
+    out["total_bytes"] = py::int_(total_file_bytes + total_dir_bytes);
+    out["users_total"] = py::int_(static_cast<long long>(uid_to_user.size()));
+    out["users_with_files"] = py::int_(static_cast<long long>(per_uid_files.size()));
+    out["per_user"] = per_user_list;
+    out["groups_total"] = py::int_(static_cast<long long>(gid_to_group.size()));
+    out["groups_with_files"] = py::int_(static_cast<long long>(per_gid_files.size()));
+    out["per_group"] = per_group_list;
+
+    free_string_list(paths);
+    guestfs_umount_all(g);
+    guestfs_shutdown(g);
+    guestfs_close(g);
+
+    if (verbose) {
+        py::print("Files:", files_count, "Dirs:", dirs_count, "Total bytes:", total_file_bytes);
+    }
+
+    return out;
+}
+
+
+py::dict get_files_with_metadata_json(const std::string& disk_path, bool verbose) {
+    py::list entries = list_files_with_metadata(disk_path, verbose);
+    py::dict out;
+    const ssize_t n = py::len(entries);
+    for (ssize_t i = 0; i < n; ++i) {
+        py::dict d = entries[i].cast<py::dict>();
+
+        // Extract fields if present
+        py::object size = d.contains(py::str("size")) ? d[py::str("size")] : py::str("-");
+        py::object perms = d.contains(py::str("perms")) ? d[py::str("perms")] : py::str("-");
+        py::object mtime = d.contains(py::str("mtime")) ? d[py::str("mtime")] : py::str("-");
+        py::object path  = d.contains(py::str("path"))  ? d[py::str("path")]  : py::str("-");
+
+        py::dict row;
+        row[py::str("Size")] = size;
+        row[py::str("Permission")] = perms;
+        row[py::str("Last Modified")] = mtime;
+        row[py::str("Name")] = path;
+
+        std::string key = std::to_string(static_cast<long long>(i + 1));
+        out[py::str(key)] = row;
+    }
+
+    return out;
 }
 
 } // namespace vmtool

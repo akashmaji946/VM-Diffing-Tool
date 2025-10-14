@@ -18,10 +18,12 @@ git submodule add https://github.com/pybind/pybind11.git backend/pybind11
 # Create a virtual environment and activate it
 python3.12 -m venv .vm 
 source .vm/bin/activate
+pip3 install guestfs pyqt6 pyside6
 
 
 # Install guestfs
 sudo apt install --reinstall python3-guestfs
+sudo apt install --reinstall python3-pyqt6
  
 You should see this:
 /usr/lib/python3/dist-packages/guestfs.py

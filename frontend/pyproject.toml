@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vmt"
+version = "0.1.0"
+description = "VMT CLI for VM disk inspection using vmtool backend"
+authors = [
+  { name = "VMT Team" }
+]
+requires-python = ">=3.12"
+readme = "README.md"
+keywords = ["vm", "qcow2", "guestfs", "vmtool", "vmt"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: POSIX :: Linux",
+]
+
+[project.scripts]
+vmtool = "vmt.cli:main"
+
+[tool.setuptools]
+packages = ["vmt"]

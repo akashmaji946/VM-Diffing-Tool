@@ -3,6 +3,8 @@ export PYTHONPATH=$HOME/Documents/VM-Diffing-Tool/backend/build:$PYTHONPATH
 export PYTHONPATH=/usr/lib/python3/dist-packages:$PYTHONPATH
 export PYTHONPATH=/usr/lib/python3.12/site-packages:$PYTHONPATH
 
+export PATH=$HOME/Documents/VM-Diffing-Tool/frontend/bin:$PATH
+
 export LD_LIBRARY_PATH=$HOME/Documents/VM-Diffing-Tool/backend/build:$LD_LIBRARY_PATH
 
 export LIBGUESTFS_DEBUG=1
