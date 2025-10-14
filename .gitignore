@@ -1,0 +1,13 @@
+
+*.o
+*.exe
+
+
+.zips
+build/
+.vm/
+*.pyc
+__pycache__
+*.pyo
+*.pyd
+

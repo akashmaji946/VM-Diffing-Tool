@@ -14,3 +14,11 @@ git init
 
 # Add pybind11 to your backend folder
 git submodule add https://github.com/pybind/pybind11.git backend/pybind11
+
+# Install guestfs
+sudo apt install python3-guestfs
+
+
+# Create a virtual environment and activate it
+python3.12 -m venv .vm 
+source .vm/bin/activate

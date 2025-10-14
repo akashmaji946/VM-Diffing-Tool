@@ -1,0 +1,25 @@
+Metadata-Version: 1.1
+Name: guestfs
+Version: 1.40.2
+Summary: access and modify virtual machine disk images
+Home-page: http://libguestfs.org
+Author: The libguestfs team
+Author-email: libguestfs@redhat.com
+License: LGPLv2+
+Description: 
+        libguestfs is a library and set of tools for accessing and modifying
+        virtual machine (VM) disk images.
+        
+        This package contains the Python bindings for libguestfs.
+        
+Platform: UNKNOWN
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Environment :: Console
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: GNU Lesser General Public License v2 or later (LGPLv2+)
+Classifier: Operating System :: POSIX :: Linux
+Classifier: Programming Language :: C
+Classifier: Programming Language :: Python :: 2
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: Implementation :: CPython
+Classifier: Topic :: Utilities
