@@ -1,6 +1,7 @@
 #include <guestfs.h>
 #include <pybind11/pybind11.h>
 #include <string>
+#include <sstream>
 
 namespace py = pybind11;
 
@@ -10,9 +11,18 @@ std::string get_guestfs_version() {
     if (g == nullptr) {
         return std::string("Error: Failed to create guestfs handle.");
     }
-    char *version = guestfs_version(g);
-    std::string result(version);
-    free(version);
+    struct guestfs_version *v = guestfs_version(g);
+    if (v == nullptr) {
+        guestfs_close(g);
+        return std::string("Error: Failed to get libguestfs version.");
+    }
+    std::ostringstream oss;
+    oss << v->major << "." << v->minor << "." << v->release;
+    if (v->extra && v->extra[0] != '\0') {
+        oss << v->extra;
+    }
+    std::string result = oss.str();
+    guestfs_free_version(v);
     guestfs_close(g);
     return result;
 }

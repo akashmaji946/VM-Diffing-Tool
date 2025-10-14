@@ -16,8 +16,19 @@ find_package(Python REQUIRED COMPONENTS Interpreter Development)
 
 # 2. Find libguestfs using pkg-config
 # This is the standard way to find libraries on Linux.
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(GUESTFS REQUIRED guestfs)
+# 2. Find libguestfs manually (Ubuntu doesn't ship guestfs.pc)
+find_path(GUESTFS_INCLUDE_DIRS guestfs.h
+    PATHS /usr/include /usr/local/include /usr/lib/python3/dist-packages
+)
+
+find_library(GUESTFS_LIBRARIES guestfs
+    PATHS /usr/lib /usr/lib64 /usr/lib/x86_64-linux-gnu /usr/local/lib /usr/lib/python3/dist-packages
+)
+
+include(FindPackageHandleStandardArgs)
+find_package_handle_standard_args(GUESTFS DEFAULT_MSG
+    GUESTFS_LIBRARIES GUESTFS_INCLUDE_DIRS
+)
 
 # 3. Add pybind11
 # We assume pybind11 is a subdirectory (added as a git submodule).
