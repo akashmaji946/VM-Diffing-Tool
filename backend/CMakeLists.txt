@@ -54,3 +54,32 @@ target_link_libraries(vmtool PRIVATE
 target_include_directories(vmtool PRIVATE
     ${GUESTFS_INCLUDE_DIRS}
 )
+
+
+message(STATUS "Installing vmtool to: ${Python_SITEARCH}")
+# --- Install the module .so file in Python site-packages ---
+# Standard Python path: lib/pythonX.Y/site-packages
+install(TARGETS vmtool
+    LIBRARY DESTINATION lib/python${Python_VERSION_MAJOR}.${Python_VERSION_MINOR}/site-packages
+)
+
+# also install in /usr/lib/pythonX.Y/site-packages
+install(TARGETS vmtool
+    LIBRARY DESTINATION /usr/lib/python${Python_VERSION_MAJOR}.${Python_VERSION_MINOR}/site-packages
+)
+
+# also install in /usr/lib/python3/dist-packages
+install(TARGETS vmtool
+    LIBRARY DESTINATION /usr/lib/python3/dist-packages
+)
+
+
+# Optional: Install headers for development
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/pybind11/include
+    DESTINATION include/pybind11
+)
+
+message(STATUS "Python site-packages: ${Python_SITEARCH}")
+install(TARGETS vmtool
+    LIBRARY DESTINATION ${Python_SITEARCH}
+)
