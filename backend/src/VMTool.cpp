@@ -13,6 +13,9 @@
 #include <unordered_map>
 #include <map>
 #include <sys/stat.h>
+#include <unistd.h>
+#include <cstdio>
+#include <bitset>
 
 namespace py = pybind11;
 
@@ -478,6 +481,168 @@ py::dict get_files_with_metadata_json(const std::string& disk_path, bool verbose
     }
 
     return out;
+}
+
+// Read file contents from inside the guest image. Uses guestfs_cat to read the file,
+// then applies optional stop delimiter and byte limit.
+py::object get_file_contents_in_disk(const std::string &disk_path,
+                                     const std::string &name,
+                                     bool binary,
+                                     long long read,
+                                     const std::string &stop) {
+    guestfs_h *g = guestfs_create();
+    if (!g) {
+        throw std::runtime_error("Failed to create guestfs handle");
+    }
+
+    if (guestfs_add_drive_ro(g, disk_path.c_str()) == -1) {
+        guestfs_close(g);
+        throw std::runtime_error("guestfs_add_drive_ro failed");
+    }
+    if (guestfs_launch(g) == -1) {
+        guestfs_close(g);
+        throw std::runtime_error("guestfs_launch failed");
+    }
+
+    // Inspect and mount
+    char **roots = guestfs_inspect_os(g);
+    if (!roots || !roots[0]) {
+        if (roots) free_string_list(roots);
+        guestfs_shutdown(g);
+        guestfs_close(g);
+        throw std::runtime_error("No OS found in image");
+    }
+    for (size_t i = 0; roots[i] != nullptr; ++i) {
+        const char *root = roots[i];
+        char **mpdev = guestfs_inspect_get_mountpoints(g, root);
+        if (!mpdev) continue;
+        struct MP { std::string mountpoint; std::string device; };
+        std::vector<MP> mps;
+        for (size_t j = 0; mpdev[j] && mpdev[j+1]; j += 2) {
+            mps.push_back(MP{mpdev[j], mpdev[j+1]});
+        }
+        free_string_list(mpdev);
+        std::sort(mps.begin(), mps.end(), [](const MP &a, const MP &b){
+            return a.mountpoint.size() < b.mountpoint.size();
+        });
+        for (const auto &p : mps) {
+            (void) guestfs_mount_ro(g, p.device.c_str(), p.mountpoint.c_str());
+        }
+    }
+
+    // Ensure path is absolute in guest
+    std::string guest_path = name;
+    if (guest_path.empty() || guest_path[0] != '/') {
+        // Interpret as absolute for safety
+        guest_path = std::string("/") + guest_path;
+    }
+
+    // Download the file to a secure temporary path to preserve exact bytes
+    char tmp_template[] = "/tmp/vmtXXXXXX";
+    int tfd = mkstemp(tmp_template);
+    if (tfd >= 0) close(tfd);
+    std::string host_tmp = std::string(tmp_template);
+
+    if (guestfs_download(g, guest_path.c_str(), host_tmp.c_str()) == -1) {
+        guestfs_umount_all(g);
+        guestfs_shutdown(g);
+        guestfs_close(g);
+        std::remove(host_tmp.c_str());
+        throw std::runtime_error(std::string("Failed to download file: ") + guest_path);
+    }
+
+    // Read bytes from temp file
+    std::ifstream ifs(host_tmp, std::ios::binary);
+    if (!ifs) {
+        guestfs_umount_all(g);
+        guestfs_shutdown(g);
+        guestfs_close(g);
+        std::remove(host_tmp.c_str());
+        throw std::runtime_error(std::string("Failed to open temp file: ") + host_tmp);
+    }
+
+    std::vector<char> data;
+    if (read >= 0) {
+        data.resize(static_cast<size_t>(read));
+        ifs.read(data.data(), static_cast<std::streamsize>(data.size()));
+        data.resize(static_cast<size_t>(ifs.gcount()));
+    } else {
+        // read all
+        ifs.seekg(0, std::ios::end);
+        std::streamsize sz = ifs.tellg();
+        ifs.seekg(0, std::ios::beg);
+        if (sz > 0) {
+            data.resize(static_cast<size_t>(sz));
+            ifs.read(data.data(), sz);
+        }
+    }
+    ifs.close();
+
+    // Cleanup guest and temp
+    guestfs_umount_all(g);
+    guestfs_shutdown(g);
+    guestfs_close(g);
+    std::remove(host_tmp.c_str());
+
+    // Apply stop delimiter if provided (search in bytes)
+    if (!stop.empty() && !data.empty()) {
+        const std::string needle = stop;
+        auto it = std::search(data.begin(), data.end(), needle.begin(), needle.end());
+        if (it != data.end()) {
+            data.resize(static_cast<size_t>(it - data.begin()));
+        }
+    }
+
+    // If both stop and read were provided, enforce read limit after stop trim
+    if (read >= 0 && data.size() > static_cast<size_t>(read)) {
+        data.resize(static_cast<size_t>(read));
+    }
+
+    if (binary) {
+        return py::bytes(data.data(), data.size());
+    } else {
+        std::string s(data.begin(), data.end());
+        return py::str(s);
+    }
+}
+
+py::str get_file_contents_in_disk_format(const std::string &disk_path,
+                                         const std::string &name,
+                                         const std::string &format,
+                                         long long read,
+                                         const std::string &stop) {
+    // Always fetch raw bytes so we preserve NULs and exact values
+    py::object contents = get_file_contents_in_disk(disk_path, name, /*binary=*/true, read, stop);
+    // Convert py::bytes to std::string (std::string preserves NULs and length)
+    std::string buf = contents.cast<std::string>();
+
+    if (format == "hex") {
+        // Uppercase spaced hex: "00 0F 1A ..."
+        static const char *hexmap = "0123456789ABCDEF";
+        if (buf.empty()) return py::str("");
+        std::string out;
+        out.reserve(buf.size() * 3 - 1);
+        for (size_t i = 0; i < buf.size(); ++i) {
+            unsigned char b = static_cast<unsigned char>(buf[i]);
+            out.push_back(hexmap[(b >> 4) & 0xF]);
+            out.push_back(hexmap[b & 0xF]);
+            if (i + 1 < buf.size()) out.push_back(' ');
+        }
+        return py::str(out);
+    } else if (format == "bits") {
+        // Continuous bitstring: 8 chars per byte
+        if (buf.empty()) return py::str("");
+        std::string out;
+        out.reserve(buf.size() * 8);
+        for (size_t i = 0; i < buf.size(); ++i) {
+            unsigned char b = static_cast<unsigned char>(buf[i]);
+            std::bitset<8> bs(b);
+            out += bs.to_string();
+        }
+        return py::str(out);
+    } else {
+        throw std::runtime_error("Invalid format. Supported formats are 'hex' and 'bits'.");
+    }
 }
 
 } // namespace vmtool

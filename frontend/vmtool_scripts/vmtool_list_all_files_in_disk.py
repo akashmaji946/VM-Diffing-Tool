@@ -1,7 +1,13 @@
+# file: vmtool_list_all_files_in_disk.py
+# location: VM-Diffing-Tool/frontend/vmtool_scripts/vmtool_list_all_files_in_disk.py
+# author: Akash Maji
+# date: 2025-10-15
+# version: 0.1
+# description: List all files in a VM disk image with metadata (via C++ backend)
+
 import argparse
 import sys
 import vmtool
-
 
 def print_entries(entries):
     print(f"{'Size':>10} {'Permission':>10} {'Last Modified':>20} {'Name':>20}")

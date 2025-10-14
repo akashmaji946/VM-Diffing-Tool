@@ -43,4 +43,25 @@ PYBIND11_MODULE(vmtool, m) {
           py::arg("disk_path"),
           py::arg("verbose") = false,
           "Return file listing as a dict keyed by '1','2',... with fields: Size, Permission, Last Modified, Name");
+
+    m.def("get_file_contents_in_disk",
+          &vmtool::get_file_contents_in_disk,
+          py::arg("disk_path"),
+          py::arg("name"),
+          py::arg("binary") = false,
+          py::arg("read") = -1,
+          py::arg("stop") = "",
+          "Read contents of a file inside the guest. If binary is true returns bytes, else str.\n"
+          "read=-1 reads all bytes, otherwise reads up to N bytes. If stop is non-empty, reading\n"
+          "stops at the first occurrence of 'stop' (exclusive).");
+
+    m.def("get_file_contents_in_disk_format",
+          &vmtool::get_file_contents_in_disk_format,
+          py::arg("disk_path"),
+          py::arg("name"),
+          py::arg("format"),
+          py::arg("read") = -1,
+          py::arg("stop") = "",
+          "Read contents and return formatted output. format: 'hex' (uppercase spaced hex) or 'bits' (bitstring).\n"
+          "read/stop behave like get_file_contents_in_disk.");
 }

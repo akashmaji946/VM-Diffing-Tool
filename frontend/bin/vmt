@@ -51,6 +51,29 @@ def do_list(args: argparse.Namespace) -> int:
         print(f"Error: {e}")
         return 2
 
+
+def do_dump(args: argparse.Namespace) -> int:
+    disk = args.disk
+    name = args.name
+    fmt = args.format
+    read = int(args.read)
+    stop = args.stop or ""
+    out = args.out
+
+    try:
+        import vmtool
+        data = vmtool.get_file_contents_in_disk_format(disk, name, fmt, read=read, stop=stop)
+        if out:
+            with open(out, "w", encoding="utf-8") as f:
+                f.write(data)
+            print(f"Dump saved to: {out}")
+        else:
+            print(data)
+        return 0
+    except Exception as e:
+        print(f"Error: {e}")
+        return 2
+
 def do_meta(args: argparse.Namespace) -> int:
     disk = args.disk
     verbose = bool(args.verbose)
@@ -114,6 +137,18 @@ def build_parser() -> argparse.ArgumentParser:
     p_meta.add_argument("--verbose", action="store_true", help="Verbose output")
     p_meta.add_argument("--json", help="Optional path to save full JSON metadata")
     p_meta.set_defaults(func=do_meta)
+
+    # dump subcommand
+    p_dump = sub.add_parser(
+        "dump", help="Dump a guest file's contents formatted as hex or bits"
+    )
+    p_dump.add_argument("--disk", required=True, help="Path to qcow2/raw disk image")
+    p_dump.add_argument("--name", required=True, help="Path to file inside the guest (e.g., /etc/hosts)")
+    p_dump.add_argument("--format", required=True, choices=["hex", "bits"], help="Output format")
+    p_dump.add_argument("--read", default=-1, help="Bytes to read (-1 means all)")
+    p_dump.add_argument("--stop", default="", help="Stop at first occurrence of this delimiter (not included)")
+    p_dump.add_argument("--out", help="Optional path to save output; prints to stdout if omitted")
+    p_dump.set_defaults(func=do_dump)
 
     return parser
 
