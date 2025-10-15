@@ -16,7 +16,7 @@ pybind11::list list_files_with_metadata(const std::string& disk_path, bool verbo
 void write_files_with_metadata(pybind11::list entries, const std::string& output_file);
 
 // Returns a dict with summary stats: files, directories, users, sizes, per-user breakdown
-pybind11::dict get_meta_data(const std::string& disk_path, bool verbose = false);
+pybind11::dict get_disk_meta_data(const std::string& disk_path, bool verbose = false);
 
 // Returns a dict with numbered string keys mapping to {"Size","Permission","Last Modified","Name"}
 pybind11::dict get_files_with_metadata_json(const std::string& disk_path, bool verbose = false);
@@ -37,8 +37,14 @@ pybind11::object get_file_contents_in_disk(const std::string& disk_path,
 // The read and stop parameters behave the same as in get_file_contents_in_disk.
 pybind11::str get_file_contents_in_disk_format(const std::string& disk_path,
                                                const std::string& name,
-                                               const std::string& format,
+                                               const std::string& format, // hex, bits
                                                long long read = -1,
                                                const std::string& stop = "");
+
+// check if a file exists in the guest image
+pybind11::dict check_file_exists_in_disk(const std::string& disk_path, const std::string& name);
+
+// list all files from a directory in the guest image
+pybind11::dict list_files_in_directory_in_disk(const std::string& disk_path, const std::string& directory, bool detailed);
 
 } // namespace vmtool

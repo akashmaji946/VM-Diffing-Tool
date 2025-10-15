@@ -40,4 +40,25 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-print(hline)
+
+
+# USAGE
+"""
+sudo python3 vmtool_get_file_contents_in_disk_format.py \
+    --disk /full/path/to/disk.qcow2 \
+    --name /full/path/to/file \
+    --format <hex|bits> \
+    [--out /full/path/to/output] \
+    [--read <bytes>] \
+    [--stop <delimiter>] \
+    
+"""
+
+# example input
+"""
+sudo python3 vmtool_get_file_contents_in_disk_format.py \
+    --disk /home/akashmaji/Desktop/vm1.qcow2 \
+    --name /bin/bash \
+    --format hex \
+    --out $PWD/output.txt
+"""

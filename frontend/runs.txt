@@ -3,8 +3,14 @@ sudo python3 list_all_files_in_disk.py \
     --file /home/akashmaji/Desktop/vm3.qcow2 \
     --out $TEXT_DIR/py.txt
 
+
+-----------------------------------------------------------------------------    
+
 VM-Diffing-Tool/frontend/vmtool_scripts/vmtool_list_all_files_in_disk.py
 sudo python3 vmtool_list_all_files_in_disk.py \
     --file /home/akashmaji/Desktop/vm3.qcow2 \
     --out $TEXT_DIR/cpp.txt
+
+
+
 

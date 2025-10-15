@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VM Tool Server - {% block title %}{% endblock %}</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+  <!-- DataTables CSS (core) -->
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css" />
+  <style>
+    .container { max-width: 1100px; margin: 2rem auto; }
+    pre.code { background: #121212; color: #eee; padding: 1rem; border-radius: 8px; white-space: pre-wrap; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    /* Loader overlay */
+    #loaderOverlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.35);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+    #loaderOverlay .loader-card {
+      background: rgba(20,20,20,0.9);
+      color: #fff;
+      padding: 1rem 1.25rem;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      gap: 0.9rem;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+      border: 1px solid rgba(255,255,255,0.15);
+    }
+    .spinner {
+      width: 56px; height: 56px;
+      border: 6px solid #fff; border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.9s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* DataTables header sort arrows */
+    table.dataTable thead th { overflow: visible; position: relative; }
+    table.dataTable thead th.sorting,
+    table.dataTable thead th.sorting_asc,
+    table.dataTable thead th.sorting_desc,
+    table.dataTable thead th[aria-sort] {
+      position: relative; /* ensure :after positions correctly */
+      padding-right: 1.25em; /* space for arrow */
+    }
+    table.dataTable thead th.sorting:after,
+    table.dataTable thead th.sorting_asc:after,
+    table.dataTable thead th.sorting_desc:after,
+    table.dataTable thead th[aria-sort]:after {
+      content: '\2195'; /* ↕ */
+      position: absolute;
+      right: 0.5em;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 0.9em;
+      opacity: 0.6;
+    }
+    table.dataTable thead th.sorting_asc:after,
+    table.dataTable thead th[aria-sort="ascending"]:after { content: '\2191'; opacity: 1; } /* ↑ */
+    table.dataTable thead th.sorting_desc:after,
+    table.dataTable thead th[aria-sort="descending"]:after { content: '\2193'; opacity: 1; } /* ↓ */
+  </style>
+</head>
+<body>
+  <!-- Global loader overlay -->
+  <div id="loaderOverlay" aria-hidden="true" aria-live="polite">
+    <div class="loader-card">
+      <div class="spinner" role="progressbar" aria-label="Loading"></div>
+      <div class="msg mono">Please wait…</div>
+    </div>
+  </div>
+  <nav class="container">
+    <ul>
+      <li><strong>VM Tool Server</strong></li>
+    </ul>
+    <ul>
+      <li><a href="/">Home</a></li>
+      <li><a href="/list-files">List Files</a></li>
+      <li><a href="/files-json">Files JSON</a></li>
+      <li><a href="/meta">Disk Meta</a></li>
+      <li><a href="/file-contents">File Contents</a></li>
+      <li><a href="/file-contents-format">Contents Format</a></li>
+      <li><a href="/check-exists">Check Exists</a></li>
+    </ul>
+  </nav>
+
+  <main class="container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <article class="{{ 'secondary' if category=='error' else 'primary' }}">{{ message }}</article>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </main>
+  <!-- jQuery + DataTables (core) -->
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
+  <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+  <script>
+    // Simple loader API
+    window.VMTS = (function(){
+      const overlay = document.getElementById('loaderOverlay');
+      return {
+        show(){ if (overlay) overlay.style.display = 'flex'; },
+        hide(){ if (overlay) overlay.style.display = 'none'; }
+      };
+    })();
+
+    // Show loader on all form submissions
+    window.addEventListener('DOMContentLoaded', function(){
+      document.querySelectorAll('form').forEach(function(f){
+        f.addEventListener('submit', function(){
+          if (window.VMTS) window.VMTS.show();
+        });
+      });
+
+      // Show loader on same-origin navigation link clicks
+      document.addEventListener('click', function(ev){
+        const a = ev.target && (ev.target.closest ? ev.target.closest('a[href]') : null);
+        if (!a) return;
+        // Ignore new tab/window or hash-only links
+        if (ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey) return;
+        const href = a.getAttribute('href') || '';
+        if (href.startsWith('#')) return;
+        try {
+          const url = new URL(href, window.location.origin);
+          if (url.origin !== window.location.origin) return; // external
+          if (window.VMTS) window.VMTS.show();
+        } catch { /* noop */ }
+      }, true);
+
+      // Ensure loader is hidden after render
+      if (window.VMTS) window.VMTS.hide();
+    });
+  </script>
+</body>
+</html>

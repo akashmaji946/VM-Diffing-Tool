@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% block title %}Check Exists{% endblock %}
+{% block content %}
+<h2>Check If File Exists</h2>
+<form method="post">
+  <div class="grid">
+    <label>Disk Path
+      <input type="text" name="disk_path" value="{{ disk_path or '' }}" placeholder="/path/to/disk.qcow2" required />
+    </label>
+    <label>Guest File Path
+      <input type="text" name="name" value="{{ name or '' }}" placeholder="/etc/hosts" required />
+    </label>
+  </div>
+  <button type="submit">Check</button>
+</form>
+
+{% if result is not none %}
+  <h3>Result</h3>
+  <pre class="code mono">{{ result | tojson(indent=2) }}</pre>
+  <table>
+    <tbody>
+      {% for k, v in result.items() %}
+      <tr><th class="mono">{{ k }}</th><td class="mono">{{ v }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endif %}
+{% endblock %}

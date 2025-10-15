@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+{% block title %}Files JSON{% endblock %}
+{% block content %}
+<h2>Files As JSON</h2>
+<form method="post">
+  <label>Disk Path
+    <input type="text" name="disk_path" value="{{ disk_path or '' }}" placeholder="/path/to/disk.qcow2" required />
+  </label>
+  <label>
+    <input type="checkbox" name="verbose" {% if verbose %}checked{% endif %} /> Verbose
+  </label>
+  <button type="submit">Get JSON</button>
+</form>
+
+{% if result is not none %}
+  <h3>JSON</h3>
+  <pre class="code mono">{{ result }}</pre>
+{% endif %}
+{% endblock %}

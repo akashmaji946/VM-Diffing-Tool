@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+{% block title %}Disk Meta{% endblock %}
+{% block content %}
+<h2>Disk Meta Data</h2>
+<form method="post">
+  <label>Disk Path
+    <input type="text" name="disk_path" value="{{ disk_path or '' }}" placeholder="/path/to/disk.qcow2" required />
+  </label>
+  <label>
+    <input type="checkbox" name="verbose" {% if verbose %}checked{% endif %} /> Verbose
+  </label>
+  <button type="submit">Get Meta</button>
+</form>
+
+{% if result is not none %}
+  <h3>Totals</h3>
+  <ul>
+    <li><strong>files_count</strong>: {{ result['files_count'] }}</li>
+    <li><strong>dirs_count</strong>: {{ result['dirs_count'] }}</li>
+    <li><strong>total_file_bytes</strong>: {{ result['total_file_bytes'] }}</li>
+    <li><strong>total_dir_bytes</strong>: {{ result['total_dir_bytes'] }}</li>
+    <li><strong>total_bytes</strong>: {{ result['total_bytes'] }}</li>
+  </ul>
+
+  <h3>Per User</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>uid</th><th>user</th><th>files</th><th>dirs</th><th>bytes</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in result['per_user'] %}
+      <tr>
+        <td class="mono">{{ row['uid'] }}</td>
+        <td class="mono">{{ row['user'] }}</td>
+        <td class="mono">{{ row['files'] }}</td>
+        <td class="mono">{{ row['dirs'] }}</td>
+        <td class="mono">{{ row['bytes'] }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <h3>Per Group</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>gid</th><th>group</th><th>files</th><th>dirs</th><th>bytes</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in result['per_group'] %}
+      <tr>
+        <td class="mono">{{ row['gid'] }}</td>
+        <td class="mono">{{ row['group'] }}</td>
+        <td class="mono">{{ row['files'] }}</td>
+        <td class="mono">{{ row['dirs'] }}</td>
+        <td class="mono">{{ row['bytes'] }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endif %}
+{% endblock %}

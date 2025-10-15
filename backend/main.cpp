@@ -32,8 +32,8 @@ PYBIND11_MODULE(vmtool, m) {
           py::arg("output_file"),
           "Write the entries returned by list_files_with_metadata to a text file in a formatted table");
 
-    m.def("get_meta_data",
-          &vmtool::get_meta_data,
+    m.def("get_disk_meta_data",
+          &vmtool::get_disk_meta_data,
           py::arg("disk_path"),
           py::arg("verbose") = false,
           "Return aggregated metadata for the disk image: counts (files/dirs), total sizes, and per-user breakdown");
@@ -64,4 +64,17 @@ PYBIND11_MODULE(vmtool, m) {
           py::arg("stop") = "",
           "Read contents and return formatted output. format: 'hex' (uppercase spaced hex) or 'bits' (bitstring).\n"
           "read/stop behave like get_file_contents_in_disk.");
+
+    m.def("check_file_exists_in_disk",    
+          &vmtool::check_file_exists_in_disk,
+          py::arg("disk_path"),
+          py::arg("name"),
+          "Check if a file exists in the guest image.");    
+
+    m.def("list_files_in_directory_in_disk",    
+          &vmtool::list_files_in_directory_in_disk,
+          py::arg("disk_path"),
+          py::arg("directory"),
+          py::arg("detailed") = false,
+          "List all files in a directory in the guest image.");    
 }

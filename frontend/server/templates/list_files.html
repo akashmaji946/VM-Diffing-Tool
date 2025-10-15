@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+{% block title %}List Files{% endblock %}
+{% block content %}
+<h2>List Files With Metadata</h2>
+<style>
+  /* Widen the Last Modified column */
+  table th.col-mtime, table td.col-mtime { min-width: 240px; }
+  /* DataTables tweaks */
+  table.dataTable thead th { cursor: pointer; }
+</style>
+<form method="post">
+  <label>Disk Path
+    <input type="text" name="disk_path" value="{{ disk_path or '' }}" placeholder="/full/path/to/disk.qcow2" required />
+  </label>
+  <label>
+    <input type="checkbox" name="verbose" {% if verbose %}checked{% endif %} /> Verbose
+  </label>
+  <button type="submit">List Files</button>
+</form>
+
+{% if result is not none %}
+  <h3>Results</h3>
+  <table id="resultsTable" class="display" style="width:100%">
+    <thead>
+      <tr>
+        <th>Size</th>
+        <th>Permission</th>
+        <th class="col-mtime">Last Modified</th>
+        <th>Name</th>
+        <!-- hidden sortable helpers -->
+        <th>_size_sort</th>
+        <th>_mtime_sort</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for row in result %}
+      <tr>
+        <td class="mono">{{ row['size'] }}</td>
+        <td class="mono">{{ row['perms'] }}</td>
+        <td class="mono col-mtime">{{ row['mtime'] }}</td>
+        <td class="mono">{{ row['path'] }}</td>
+        <!-- hidden sortable values populated by JS -->
+        <td class="mono"></td>
+        <td class="mono"></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <script>
+    (function(){
+      // Fill hidden columns with numeric values for robust sorting
+      function normalize() {
+        const rows = document.querySelectorAll('#resultsTable tbody tr');
+        rows.forEach(function(tr){
+          const tds = tr.cells;
+          // indexes: 0=size, 2=mtime, 4=_size_sort, 5=_mtime_sort
+          const sizeText = (tds[0]?.textContent || '').replace(/[\s,]/g, '');
+          const sizeNum = parseInt(sizeText, 10);
+          if (tds[4]) tds[4].textContent = isNaN(sizeNum) ? '' : String(sizeNum);
+
+          const mtxt = (tds[2]?.textContent || '').trim();
+          const ms = Date.parse(mtxt.replace(' ', 'T'));
+          if (tds[5]) tds[5].textContent = isNaN(ms) ? '' : String(ms);
+        });
+      }
+
+      function initDataTable(){
+        if (!(window.jQuery && window.jQuery.fn && window.jQuery.fn.dataTable)) {
+          // Wait until DataTables is available
+          return setTimeout(initDataTable, 50);
+        }
+        const $table = jQuery('#resultsTable');
+        if (!$table.length) return;
+        // Show loader when user sorts or searches (client-side only)
+        $table.on('order.dt search.dt page.dt', function(){ if (window.VMTS) window.VMTS.show(); });
+        $table.on('draw.dt', function(){ if (window.VMTS) window.VMTS.hide(); });
+
+        $table.DataTable({
+          processing: false, // client-side only
+          paging: true,
+          pageLength: 50,
+          order: [],
+          deferRender: true,
+          autoWidth: false,
+          columnDefs: [
+            { targets: 0, orderData: [4], width: '10%' }, // sort by hidden numeric size
+            { targets: 1, orderable: false, width: '12%' },
+            { targets: 2, orderData: [5], width: '28%' }, // sort by hidden epoch ms
+            { targets: 3, type: 'string', width: '50%' },
+            { targets: [4,5], visible: false, searchable: true }
+          ],
+        });
+      }
+
+      document.addEventListener('DOMContentLoaded', function(){
+        normalize();
+        initDataTable();
+      });
+    })();
+  </script>
+{% endif %}
+{% endblock %}

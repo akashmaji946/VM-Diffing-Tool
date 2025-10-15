@@ -219,7 +219,7 @@ void write_files_with_metadata(py::list entries, const std::string &output_file)
 }
 
 // Summary metadata for a QCOW2 disk: counts and sizes, including per-user
-py::dict get_meta_data(const std::string &disk_path, bool verbose) {
+py::dict get_disk_meta_data(const std::string &disk_path, bool verbose) {
     py::dict out;
 
     guestfs_h *g = guestfs_create();
@@ -645,4 +645,209 @@ py::str get_file_contents_in_disk_format(const std::string &disk_path,
     }
 }
 
-} // namespace vmtool
+// check if a file exists in the guest image
+pybind11::dict check_file_exists_in_disk(const std::string &disk_path, const std::string &name) {
+    guestfs_h *g = guestfs_create();
+    if (!g) {
+        throw std::runtime_error("Failed to create guestfs handle");
+    }
+
+    if (guestfs_add_drive_ro(g, disk_path.c_str()) == -1) {
+        guestfs_close(g);
+        throw std::runtime_error("guestfs_add_drive_ro failed");
+    }
+    if (guestfs_launch(g) == -1) {
+        guestfs_close(g);
+        throw std::runtime_error("guestfs_launch failed");
+    }
+
+    // Inspect and mount
+    char **roots = guestfs_inspect_os(g);
+    if (!roots || !roots[0]) {
+        if (roots) free_string_list(roots);
+        guestfs_shutdown(g);
+        guestfs_close(g);
+        throw std::runtime_error("No OS found in image");
+    }
+    for (size_t i = 0; roots[i] != nullptr; ++i) {
+        const char *root = roots[i];
+        char **mpdev = guestfs_inspect_get_mountpoints(g, root);
+        if (!mpdev) continue;
+        struct MP { std::string mountpoint; std::string device; };
+        std::vector<MP> mps;
+        for (size_t j = 0; mpdev[j] && mpdev[j+1]; j += 2) {
+            mps.push_back(MP{mpdev[j], mpdev[j+1]});
+        }
+        free_string_list(mpdev);
+        std::sort(mps.begin(), mps.end(), [](const MP &a, const MP &b){
+            return a.mountpoint.size() < b.mountpoint.size();
+        });
+        for (const auto &p : mps) {
+            (void) guestfs_mount_ro(g, p.device.c_str(), p.mountpoint.c_str());
+        }
+    }
+
+    // Ensure path is absolute in guest
+    std::string guest_path = name;
+    if (guest_path.empty() || guest_path[0] != '/') {
+        // Interpret as absolute for safety
+        guest_path = std::string("/") + guest_path;
+    }
+
+    // Check if path exists first
+    bool exists = guestfs_exists(g, guest_path.c_str());
+
+    bool dir = false;
+    bool file = false;
+    bool link = false;
+    bool socket = false;
+    bool chardev = false;
+    bool blockdev = false;
+    bool fifo = false;
+    bool unknown = false;
+
+    long long owner_uid = -1;
+    long long group_gid = -1;
+    std::string permissions = "-";
+    long long size_val = -1;
+    std::string mtime_str = "-";
+
+    if (exists) {
+        struct guestfs_statns *st = guestfs_statns(g, guest_path.c_str());
+        if (st) {
+            uint32_t mode = static_cast<uint32_t>(st->st_mode);
+            dir = S_ISDIR(mode);
+            file = S_ISREG(mode);
+            link = S_ISLNK(mode);
+            socket = S_ISSOCK(mode);
+            chardev = S_ISCHR(mode);
+            blockdev = S_ISBLK(mode);
+            fifo = S_ISFIFO(mode);
+            unknown = !(dir || file || link || socket || chardev || blockdev || fifo);
+
+            owner_uid = static_cast<long long>(st->st_uid);
+            group_gid = static_cast<long long>(st->st_gid);
+            permissions = perms_string(static_cast<uint32_t>(mode & 0777));
+            size_val = static_cast<long long>(st->st_size);
+            mtime_str = format_time(static_cast<std::time_t>(st->st_mtime_sec));
+
+            guestfs_free_statns(st);
+        } else {
+            // If stat fails despite existence, mark as unknown
+            unknown = true;
+        }
+    }
+
+    // Cleanup guest
+    guestfs_umount_all(g);
+    guestfs_shutdown(g);
+    guestfs_close(g);
+
+    // Build dictionary result
+    pybind11::dict out;
+    out[pybind11::str("exists")] = pybind11::bool_(exists);
+    out[pybind11::str("full_path")] = pybind11::str(guest_path);
+    out[pybind11::str("dir")] = pybind11::bool_(dir);
+    out[pybind11::str("file")] = pybind11::bool_(file);
+    out[pybind11::str("link")] = pybind11::bool_(link);
+    out[pybind11::str("socket")] = pybind11::bool_(socket);
+    out[pybind11::str("chardev")] = pybind11::bool_(chardev);
+    out[pybind11::str("blockdev")] = pybind11::bool_(blockdev);
+    out[pybind11::str("fifo")] = pybind11::bool_(fifo);
+    out[pybind11::str("unknown")] = pybind11::bool_(unknown);
+
+
+    // owner/group numeric IDs
+    out[pybind11::str("owner")] = pybind11::int_(owner_uid);
+    out[pybind11::str("group")] = pybind11::int_(group_gid);
+    out[pybind11::str("permissions")] = pybind11::str(permissions);
+    if (size_val >= 0) {
+        out[pybind11::str("size")] = pybind11::int_(size_val);
+    } else {
+        out[pybind11::str("size")] = pybind11::str("-");
+    }
+    out[pybind11::str("mtime")] = pybind11::str(mtime_str);
+
+    return out;
+}
+
+pybind11::dict list_files_in_directory_in_disk(const std::string& disk_path, const std::string& directory, bool detailed = false) {
+    guestfs_h *g = guestfs_create();
+    if (!g) {
+        throw std::runtime_error("Failed to create guestfs handle");
+    }
+    if (guestfs_add_drive_ro(g, disk_path.c_str()) == -1) {
+        guestfs_close(g);
+        throw std::runtime_error("guestfs_add_drive_ro failed");
+    }
+    if (guestfs_launch(g) == -1) {
+        guestfs_close(g);
+        throw std::runtime_error("guestfs_launch failed");
+    }
+
+    // Inspect and mount
+    char **roots = guestfs_inspect_os(g);
+    if (!roots || !roots[0]) {
+        if (roots) free_string_list(roots);
+        guestfs_shutdown(g);
+        guestfs_close(g);
+        throw std::runtime_error("No OS found in image");
+    }   
+    for (size_t i = 0; roots[i] != nullptr; ++i) {
+        const char *root = roots[i];
+        char **mpdev = guestfs_inspect_get_mountpoints(g, root);
+        if (!mpdev) continue;
+        struct MP { std::string mountpoint; std::string device; };
+        std::vector<MP> mps;
+        for (size_t j = 0; mpdev[j] && mpdev[j+1]; j += 2) {
+            mps.push_back(MP{mpdev[j], mpdev[j+1]});
+        }
+        free_string_list(mpdev);
+        std::sort(mps.begin(), mps.end(), [](const MP &a, const MP &b){
+            return a.mountpoint.size() < b.mountpoint.size();
+        });
+        for (const auto &p : mps) {
+            (void) guestfs_mount_ro(g, p.device.c_str(), p.mountpoint.c_str());
+        }
+    }
+
+    // Ensure path is absolute in guest but don't include last /
+    std::string guest_path = directory;
+    if (guest_path.empty() || guest_path[0] != '/') {
+        // Interpret as absolute for safety
+        guest_path = std::string("/") + guest_path;
+    }
+    if (guest_path.back() == '/') {
+        guest_path.pop_back();
+    }
+
+    // List files in directory
+    char **files = guestfs_ls(g, guest_path.c_str());
+    if (!files) {
+        guestfs_shutdown(g);
+        guestfs_close(g);
+        throw std::runtime_error("guestfs_ls failed");
+    }
+    
+    // Cleanup guest
+    guestfs_umount_all(g);
+    guestfs_shutdown(g);
+    guestfs_close(g);
+    
+    // Build dictionary result
+    pybind11::dict out;
+    for (size_t i = 0; files[i] != nullptr; ++i) {
+        if (detailed) {
+            // check_file_exists_in_disk
+            pybind11::dict file_info = check_file_exists_in_disk(disk_path, guest_path + "/" + files[i]);
+            out[pybind11::str(files[i])] = file_info;
+        }else{
+            out[pybind11::str(files[i])] = pybind11::str(files[i]);
+        }
+    }
+    free_string_list(files);
+    return out;
+}
+   
+
+} // namespace vmtool   

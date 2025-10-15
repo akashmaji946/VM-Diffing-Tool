@@ -1,0 +1,123 @@
+===========================================================
+Totals:
+  files: 108028
+  dirs: 15595
+  total_file_bytes: 6910172602
+  total_dir_bytes: 65994752
+  total_bytes: 6976167354
+===========================================================
+
+Users (all, including zero):
+  root (uid=0): files=107922 dirs=15454 bytes=6881662662
+  _apt (uid=104): files=2 dirs=4 bytes=23342515
+  akash (uid=1000): files=46 dirs=82 bytes=3402698
+  man (uid=6): files=50 dirs=33 bytes=1028750
+  syslog (uid=102): files=4 dirs=1 bytes=690477
+  colord (uid=116): files=2 dirs=3 bytes=45056
+  gdm (uid=121): files=1 dirs=6 bytes=444
+  daemon (uid=1): files=0 dirs=0 bytes=0
+  uid_62583 (uid=62583): files=1 dirs=2 bytes=0
+  proxy (uid=13): files=0 dirs=0 bytes=0
+  geoclue (uid=118): files=0 dirs=2 bytes=0
+  systemd-network (uid=100): files=0 dirs=3 bytes=0
+  gnats (uid=41): files=0 dirs=0 bytes=0
+  cups-pk-helper (uid=110): files=0 dirs=0 bytes=0
+  systemd-resolve (uid=101): files=0 dirs=0 bytes=0
+  nobody (uid=65534): files=0 dirs=0 bytes=0
+  messagebus (uid=103): files=0 dirs=0 bytes=0
+  uuidd (uid=105): files=0 dirs=0 bytes=0
+  avahi-autoipd (uid=106): files=0 dirs=1 bytes=0
+  usbmux (uid=107): files=0 dirs=0 bytes=0
+  dnsmasq (uid=108): files=0 dirs=1 bytes=0
+  rtkit (uid=109): files=0 dirs=0 bytes=0
+  hplip (uid=117): files=0 dirs=1 bytes=0
+  mail (uid=8): files=0 dirs=0 bytes=0
+  avahi (uid=115): files=0 dirs=0 bytes=0
+  saned (uid=114): files=0 dirs=0 bytes=0
+  kernoops (uid=113): files=0 dirs=0 bytes=0
+  whoopsie (uid=112): files=0 dirs=0 bytes=0
+  speech-dispatcher (uid=111): files=0 dirs=2 bytes=0
+  uucp (uid=10): files=0 dirs=0 bytes=0
+  irc (uid=39): files=0 dirs=0 bytes=0
+  news (uid=9): files=0 dirs=0 bytes=0
+  list (uid=38): files=0 dirs=0 bytes=0
+  pulse (uid=119): files=0 dirs=0 bytes=0
+  www-data (uid=33): files=0 dirs=0 bytes=0
+  sync (uid=4): files=0 dirs=0 bytes=0
+  lp (uid=7): files=0 dirs=0 bytes=0
+  games (uid=5): files=0 dirs=0 bytes=0
+  backup (uid=34): files=0 dirs=0 bytes=0
+  sys (uid=3): files=0 dirs=0 bytes=0
+  gnome-initial-setup (uid=120): files=0 dirs=0 bytes=0
+  bin (uid=2): files=0 dirs=0 bytes=0
+===========================================================
+
+Groups (all, including zero):
+  root (gid=0): files=107885 dirs=15430 bytes=6856942062
+  nogroup (gid=65534): files=2 dirs=1 bytes=23342515
+  systemd-journal (gid=101): files=2 dirs=2 bytes=16777216
+  mlocate (gid=109): files=4 dirs=0 bytes=6533459
+  akash (gid=1000): files=46 dirs=82 bytes=3402698
+  man (gid=12): files=50 dirs=33 bytes=1028750
+  adm (gid=4): files=6 dirs=2 bytes=720309
+  dip (gid=30): files=3 dirs=3 bytes=380349
+  ssh (gid=115): files=1 dirs=0 bytes=362640
+  utmp (gid=43): files=4 dirs=0 bytes=293828
+  shadow (gid=42): files=10 dirs=0 bytes=170277
+  tty (gid=5): files=4 dirs=0 bytes=73784
+  colord (gid=121): files=2 dirs=3 bytes=45056
+  messagebus (gid=107): files=1 dirs=0 bytes=42992
+  crontab (gid=105): files=1 dirs=1 bytes=39352
+  mail (gid=8): files=1 dirs=2 bytes=14336
+  ssl-cert (gid=110): files=1 dirs=2 bytes=1704
+  lp (gid=7): files=3 dirs=8 bytes=831
+  gdm (gid=125): files=1 dirs=7 bytes=444
+  systemd-network (gid=102): files=0 dirs=3 bytes=0
+  sambashare (gid=126): files=0 dirs=0 bytes=0
+  users (gid=100): files=0 dirs=0 bytes=0
+  video (gid=44): files=0 dirs=0 bytes=0
+  sasl (gid=45): files=0 dirs=0 bytes=0
+  bin (gid=2): files=0 dirs=0 bytes=0
+  whoopsie (gid=117): files=0 dirs=2 bytes=0
+  lpadmin (gid=116): files=0 dirs=1 bytes=0
+  systemd-resolve (gid=103): files=0 dirs=0 bytes=0
+  bluetooth (gid=113): files=0 dirs=0 bytes=0
+  input (gid=104): files=0 dirs=0 bytes=0
+  plugdev (gid=46): files=0 dirs=0 bytes=0
+  gid_62583 (gid=62583): files=1 dirs=2 bytes=0
+  staff (gid=50): files=0 dirs=6 bytes=0
+  syslog (gid=106): files=0 dirs=1 bytes=0
+  netdev (gid=108): files=0 dirs=0 bytes=0
+  rtkit (gid=114): files=0 dirs=0 bytes=0
+  uuidd (gid=111): files=0 dirs=0 bytes=0
+  avahi-autoipd (gid=112): files=0 dirs=1 bytes=0
+  proxy (gid=13): files=0 dirs=0 bytes=0
+  pulse-access (gid=124): files=0 dirs=0 bytes=0
+  pulse (gid=123): files=0 dirs=0 bytes=0
+  geoclue (gid=122): files=0 dirs=2 bytes=0
+  src (gid=40): files=0 dirs=0 bytes=0
+  sudo (gid=27): files=0 dirs=0 bytes=0
+  tape (gid=26): files=0 dirs=0 bytes=0
+  floppy (gid=25): files=0 dirs=0 bytes=0
+  cdrom (gid=24): files=0 dirs=0 bytes=0
+  voice (gid=22): files=0 dirs=0 bytes=0
+  fax (gid=21): files=0 dirs=0 bytes=0
+  dialout (gid=20): files=0 dirs=0 bytes=0
+  kmem (gid=15): files=0 dirs=0 bytes=0
+  audio (gid=29): files=0 dirs=1 bytes=0
+  scanner (gid=118): files=0 dirs=0 bytes=0
+  gnats (gid=41): files=0 dirs=0 bytes=0
+  daemon (gid=1): files=0 dirs=0 bytes=0
+  games (gid=60): files=0 dirs=0 bytes=0
+  saned (gid=119): files=0 dirs=0 bytes=0
+  avahi (gid=120): files=0 dirs=0 bytes=0
+  sys (gid=3): files=0 dirs=0 bytes=0
+  www-data (gid=33): files=0 dirs=0 bytes=0
+  backup (gid=34): files=0 dirs=0 bytes=0
+  disk (gid=6): files=0 dirs=0 bytes=0
+  operator (gid=37): files=0 dirs=0 bytes=0
+  list (gid=38): files=0 dirs=0 bytes=0
+  news (gid=9): files=0 dirs=0 bytes=0
+  irc (gid=39): files=0 dirs=0 bytes=0
+  uucp (gid=10): files=0 dirs=0 bytes=0
+===========================================================

@@ -42,3 +42,20 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+# USAGE
+"""
+sudo python3 vmtool_get_all_files_in_disk_json.py \
+    --disk /full/path/to/disk.qcow2 \
+    [--json /full/path/to/output.json] \
+    [--verbose]
+"""
+
+# example input
+"""
+sudo python3 vmtool_get_all_files_in_disk_json.py \
+    --disk /home/akashmaji/Desktop/vm1.qcow2 \
+    --json $PWD/output.json \
+    --verbose
+"""
+

@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% block title %}File Contents (Formatted){% endblock %}
+{% block content %}
+<h2>Read File Contents (Formatted)</h2>
+<form method="post">
+  <div class="grid">
+    <label>Disk Path
+      <input type="text" name="disk_path" value="{{ disk_path or '' }}" placeholder="/path/to/disk.qcow2" required />
+    </label>
+    <label>Guest File Path
+      <input type="text" name="name" value="{{ name or '' }}" placeholder="/etc/hosts" required />
+    </label>
+  </div>
+  <div class="grid">
+    <label>Format
+      <select name="format">
+        <option value="hex" {% if format == 'hex' %}selected{% endif %}>hex</option>
+        <option value="bits" {% if format == 'bits' %}selected{% endif %}>bits</option>
+      </select>
+    </label>
+    <label>Read bytes (-1 for all)
+      <input type="number" name="read" value="{{ read or -1 }}" />
+    </label>
+  </div>
+  <label>Stop at substring
+    <input type="text" name="stop" value="{{ stop or '' }}" />
+  </label>
+  <button type="submit">Read</button>
+</form>
+
+{% if result is not none %}
+  <h3>Result</h3>
+  <pre class="code mono">{{ result }}</pre>
+{% endif %}
+{% endblock %}

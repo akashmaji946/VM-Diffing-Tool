@@ -46,3 +46,13 @@ def main():
 if __name__ == "__main__":
     main()
 
+
+# USAGE
+"""
+sudo python3 vmtool_list_all_files_in_disk.py \
+    --file /full/path/to/disk.qcow2 \
+    --out /full/path/to/output.txt \
+    [--verbose]
+"""
+
+

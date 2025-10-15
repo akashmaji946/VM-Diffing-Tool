@@ -50,3 +50,26 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+
+# USAGE
+"""
+sudo python3 vmtool_get_file_contents_in_disk.py \
+    --disk /full/path/to/disk.qcow2 \
+    --name /full/path/to/file \
+    [--out /full/path/to/output] \
+    [--binary] \
+    [--read <bytes>] \
+    [--stop <delimiter>] \
+"""
+
+# example input
+"""
+sudo python3 vmtool_get_file_contents_in_disk.py \
+    --disk /home/akashmaji/Desktop/vm1.qcow2 \
+    --name /bin/bash \
+    --binary \
+    --out $PWD/output2.txt \
+    --read -1
+"""
+
