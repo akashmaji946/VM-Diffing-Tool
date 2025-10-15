@@ -1,0 +1,103 @@
+{% extends 'base.html' %}
+{% block title %}File Compare{% endblock %}
+{% block content %}
+<h2>Compare Files (Side-by-Side)</h2>
+<form method="post">
+  <fieldset>
+    <legend>First File</legend>
+    <div class="grid">
+      <label>Disk Path 1
+        <input type="text" name="disk_path_1" value="{{ result.disk1 if result else '' }}" placeholder="/path/to/disk1.qcow2" required />
+      </label>
+      <label>Guest File Path 1
+        <input type="text" name="file_path_1" value="{{ result.path1 if result else '' }}" placeholder="/etc/hosts" required />
+      </label>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Second File</legend>
+    <div class="grid">
+      <label>Disk Path 2
+        <input type="text" name="disk_path_2" value="{{ result.disk2 if result else '' }}" placeholder="/path/to/disk2.qcow2" required />
+      </label>
+      <label>Guest File Path 2
+        <input type="text" name="file_path_2" value="{{ result.path2 if result else '' }}" placeholder="/etc/hosts" required />
+      </label>
+    </div>
+  </fieldset>
+
+  <label>
+    <input type="checkbox" name="binary" {% if result and result.binary %}checked{% endif %} /> Binary (hex)
+  </label>
+  <button type="submit">Compare</button>
+</form>
+
+{% if result is not none %}
+  <h3>Result</h3>
+  <details open>
+    <summary>Diff: {{ result.disk1 }}:{{ result.path1 }} ⇄ {{ result.disk2 }}:{{ result.path2 }}</summary>
+    <style>
+      /* Improve difflib HtmlDiff default table aesthetics to blend with Pico and fit side-by-side */
+      /* Make the page a bit wider on this screen to avoid cramped layout */
+      main.container { max-width: min(1600px, 95vw); }
+
+      .diff-wrapper {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        border: 1px solid var(--muted-border-color);
+        border-radius: .5rem;
+        background: var(--card-background-color, transparent);
+      }
+      table.diff {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        font-size: 0.9rem;
+        border-collapse: separate;
+        border-spacing: 0;
+        width: max-content; /* allow growing to content width */
+        min-width: 100%; /* but never smaller than container */
+        min-inline-size: 100%;
+        table-layout: auto; /* let browser size columns naturally */
+      }
+      .diff th, .diff td {
+        border: 1px solid var(--muted-border-color);
+        padding: .25rem .5rem;
+        vertical-align: top;
+        white-space: pre-wrap; /* allow normal wrapping by default */
+        overflow-wrap: normal;
+        word-break: normal;
+        box-sizing: border-box;
+      }
+      /* Do NOT wrap the main TEXT columns (data cells only); let them scroll horizontally */
+      table.diff td:nth-child(3),
+      table.diff td:nth-child(6) {
+        white-space: pre !important; /* preserve and do not wrap code */
+        overflow-wrap: normal !important;
+        word-break: normal !important;
+      }
+      .diff .diff_header { background: rgba(127,127,127,.15); }
+      .diff .diff_next { background: transparent; }
+      .diff .diff_add { background: rgba(0,200,0,.12); }
+      .diff .diff_chg { background: rgba(240,160,0,.15); }
+      .diff .diff_sub { background: rgba(255,0,0,.12); }
+      /* Column sizing: HtmlDiff columns are marker, lineno, text, marker, lineno, text */
+      .diff td:nth-child(1), .diff th:nth-child(1),
+      .diff td:nth-child(4), .diff th:nth-child(4) { width: 2ch; }
+      .diff td:nth-child(2), .diff th:nth-child(2),
+      .diff td:nth-child(5), .diff th:nth-child(5) { width: 7ch; }
+      /* Let text columns take remaining space evenly */
+      .diff td:nth-child(3), .diff th:nth-child(3) { width: 1%; }
+      .diff td:nth-child(6), .diff th:nth-child(6) { width: 1%; }
+
+      /* Hide HtmlDiff's tiny next-change link ("t") to reduce visual clutter */
+      .diff .diff_next a { display: none; }
+    </style>
+    <div class="diff-wrapper">
+      {{ result.diff_html | safe }}
+    </div>
+    <p class="mono">
+      Left exists: {{ 'Yes' if result.exists1 else 'No' }} | Right exists: {{ 'Yes' if result.exists2 else 'No' }}
+    </p>
+  </details>
+{% endif %}
+{% endblock %}

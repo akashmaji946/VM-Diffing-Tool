@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import os
+import difflib
+import re
 from typing import Any, Dict
 
 from flask import (
@@ -154,6 +156,91 @@ def file_contents_format() -> str | Response:
         return redirect(url_for("file_contents_format"))
 
 
+@app.route("/file-compare", methods=["GET", "POST"])
+def file_compare() -> str | Response:
+    if request.method == "GET":
+        return render_template("file_compare.html", result=None)
+
+    # Expecting two disks and two file paths
+    disk1 = request.form.get("disk_path_1", "").strip()
+    path1 = request.form.get("file_path_1", "").strip()
+    disk2 = request.form.get("disk_path_2", "").strip()
+    path2 = request.form.get("file_path_2", "").strip()
+    binary = request.form.get("binary") == "on"
+
+    if not disk1 or not path1 or not disk2 or not path2:
+        flash("Please provide both disk paths and file paths.", "error")
+        return redirect(url_for("file_compare"))
+
+    try:
+        # Check existence
+        exists1: Dict[str, Any] = vmtool.check_file_exists_in_disk(disk1, path1)
+        exists2: Dict[str, Any] = vmtool.check_file_exists_in_disk(disk2, path2)
+
+        def regroup_hex_into_lines(s: str, per_line: int = 32) -> list[str]:
+            # Extract hex byte tokens and regroup into lines of `per_line` bytes
+            tokens = re.findall(r"[0-9A-Fa-f]{2}", s)
+            if not tokens:
+                # Fallback: splitlines if nothing matched (leave as-is)
+                return s.splitlines()
+            lines: list[str] = []
+            for i in range(0, len(tokens), per_line):
+                chunk = tokens[i:i+per_line]
+                lines.append(" ".join(chunk))
+            return lines
+
+        # Prepare contents
+        if exists1.get("exists"):
+            if binary:
+                content1 = vmtool.get_file_contents_in_disk_format(disk1, path1, "hex", -1, "")
+            else:
+                content1 = vmtool.get_file_contents_in_disk(disk1, path1, False, -1, "")
+            if not isinstance(content1, str):
+                content1 = str(content1)
+            lines1 = regroup_hex_into_lines(content1, 32) if binary else content1.splitlines()
+        else:
+            lines1 = ["[FILE DOES NOT EXIST]"]
+
+        if exists2.get("exists"):
+            if binary:
+                content2 = vmtool.get_file_contents_in_disk_format(disk2, path2, "hex", -1, "")
+            else:
+                content2 = vmtool.get_file_contents_in_disk(disk2, path2, False, -1, "")
+            if not isinstance(content2, str):
+                content2 = str(content2)
+            lines2 = regroup_hex_into_lines(content2, 32) if binary else content2.splitlines()
+        else:
+            lines2 = ["[FILE DOES NOT EXIST]"]
+
+        # Generate side-by-side HTML diff
+        h = difflib.HtmlDiff()
+        diff_html = h.make_table(
+            lines1,
+            lines2,
+            fromdesc=f"{disk1}:{path1}",
+            todesc=f"{disk2}:{path2}",
+            context=False,
+            numlines=0,
+        )
+
+        return render_template(
+            "file_compare.html",
+            result={
+                "diff_html": diff_html,
+                "disk1": disk1,
+                "path1": path1,
+                "disk2": disk2,
+                "path2": path2,
+                "exists1": bool(exists1.get("exists")),
+                "exists2": bool(exists2.get("exists")),
+                "binary": binary,
+            },
+        )
+    except Exception as e:  # noqa: BLE001
+        flash(f"Error: {e}", "error")
+        return redirect(url_for("file_compare"))
+
+
 @app.route("/check-exists", methods=["GET", "POST"])
 def check_exists() -> str | Response:
     if request.method == "GET":
@@ -178,10 +265,8 @@ def check_exists() -> str | Response:
 def not_found(_: Exception) -> tuple[str, int]:
     return render_template("404.html"), 404
 
-
 def create_app() -> Flask:
     return app
-
 
 if __name__ == "__main__":
     # Export FLASK_APP=app.py and run: python app.py
