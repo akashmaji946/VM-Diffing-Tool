@@ -7,6 +7,10 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
   <!-- DataTables CSS (core) -->
   <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css" />
+  <!-- AG Grid CSS - Both themes -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@31.0.1/styles/ag-grid.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@31.0.1/styles/ag-theme-alpine.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@31.0.1/styles/ag-theme-alpine-dark.css" />
   <style>
     .container { max-width: 1100px; margin: 2rem auto; }
     pre.code { background: #121212; color: #eee; padding: 1rem; border-radius: 8px; white-space: pre-wrap; }
@@ -65,6 +69,32 @@
     table.dataTable thead th[aria-sort="ascending"]:after { content: '\2191'; opacity: 1; } /* ↑ */
     table.dataTable thead th.sorting_desc:after,
     table.dataTable thead th[aria-sort="descending"]:after { content: '\2193'; opacity: 1; } /* ↓ */
+
+    /* Global compact scaling */
+    html { font-size: 16px; }
+    body { font-size: 1rem; }
+    h1 { font-size: 2rem; }
+    h2 { font-size: 1.8rem; }
+    h3 { font-size: 1.6rem; }
+
+    /* Compact form controls */
+    :where(input, select, textarea) {
+      font-size: 0.9rem;
+      padding: 0.35rem 0.5rem;
+      min-height: 2rem;
+    }
+    :where(button, input[type="submit"], input[type="button"]) {
+      font-size: 0.9rem;
+      padding: 0.35rem 0.6rem;
+      min-height: 2rem;
+    }
+    label { font-size: 0.9rem; }
+    fieldset { padding: 0.75rem; }
+    legend { font-size: 1rem; }
+
+    /* Tables compactness */
+    table { font-size: 0.9rem; }
+    table td, table th { padding: 0.35rem 0.5rem; }
   </style>
 </head>
 <body>
@@ -88,6 +118,11 @@
       <li><a href="/file-contents-format">Contents Format</a></li>
       <li><a href="/check-exists">Check Exists</a></li>
       <li><a href="/file-compare">File Compare</a></li>
+      <li>
+        <button id="themeToggle" class="outline" style="padding: 0.4rem 0.8rem; margin: 0;" aria-label="Toggle theme">
+          <span id="themeIcon">🌙</span>
+        </button>
+      </li>
     </ul>
   </nav>
 
@@ -105,6 +140,11 @@
   <!-- jQuery + DataTables (core) -->
   <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
   <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+  <!-- AG Grid JS -->
+  <script src="https://cdn.jsdelivr.net/npm/ag-grid-community@31.0.1/dist/ag-grid-community.min.js"></script>
+  <!-- jsPDF for PDF export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
   <script>
     // Simple loader API
     window.VMTS = (function(){
@@ -113,6 +153,46 @@
         show(){ if (overlay) overlay.style.display = 'flex'; },
         hide(){ if (overlay) overlay.style.display = 'none'; }
       };
+    })();
+
+    // Theme switcher
+    (function(){
+      const STORAGE_KEY = 'vmtool-theme';
+      const themeToggle = document.getElementById('themeToggle');
+      const themeIcon = document.getElementById('themeIcon');
+      const html = document.documentElement;
+
+      // Get saved theme or default to light
+      function getSavedTheme() {
+        return localStorage.getItem(STORAGE_KEY) || 'light';
+      }
+
+      // Apply theme to document
+      function applyTheme(theme) {
+        html.setAttribute('data-theme', theme);
+        if (themeIcon) {
+          themeIcon.textContent = theme === 'dark' ? '☀️' : '🌙';
+        }
+        localStorage.setItem(STORAGE_KEY, theme);
+        
+        // Dispatch custom event for AG Grid theme switching
+        window.dispatchEvent(new CustomEvent('themechange', { detail: { theme } }));
+      }
+
+      // Toggle theme
+      function toggleTheme() {
+        const currentTheme = html.getAttribute('data-theme') || 'light';
+        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        applyTheme(newTheme);
+      }
+
+      // Initialize theme on page load
+      applyTheme(getSavedTheme());
+
+      // Add click handler
+      if (themeToggle) {
+        themeToggle.addEventListener('click', toggleTheme);
+      }
     })();
 
     // Show loader on all form submissions

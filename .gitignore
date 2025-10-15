@@ -11,3 +11,6 @@ __pycache__
 *.pyo
 *.pyd
 
+# Cache directory for server
+frontend/server/.cache/
+

@@ -35,6 +35,14 @@
 
 {% if result is not none %}
   <h3>Result</h3>
+  <div style="margin-bottom: 1rem;">
+    <button id="downloadJson" class="outline" style="margin-right: 0.5rem;">
+      📥 Download JSON
+    </button>
+    <button id="exportPdf" class="outline">
+      📄 Export PDF
+    </button>
+  </div>
   <details open>
     <summary>Diff: {{ result.disk1 }}:{{ result.path1 }} ⇄ {{ result.disk2 }}:{{ result.path2 }}</summary>
     <style>
@@ -99,5 +107,148 @@
       Left exists: {{ 'Yes' if result.exists1 else 'No' }} | Right exists: {{ 'Yes' if result.exists2 else 'No' }}
     </p>
   </details>
+  
+  <script>
+    (function(){
+      const compareData = {
+        disk1: "{{ result.disk1 }}",
+        path1: "{{ result.path1 }}",
+        disk2: "{{ result.disk2 }}",
+        path2: "{{ result.path2 }}",
+        exists1: {{ 'true' if result.exists1 else 'false' }},
+        exists2: {{ 'true' if result.exists2 else 'false' }},
+        binary: {{ 'true' if result.binary else 'false' }},
+        content1: {{ result.content1 | tojson }},
+        content2: {{ result.content2 | tojson }}
+      };
+
+      function downloadJSON() {
+        const dataStr = JSON.stringify(compareData, null, 2);
+        const dataBlob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(dataBlob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'file-compare-' + new Date().toISOString().slice(0,10) + '.json';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }
+
+      function exportPDF() {
+        if (!window.jspdf || !window.jspdf.jsPDF) {
+          alert('PDF library not loaded. Please refresh the page.');
+          return;
+        }
+        
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('p', 'mm', 'a4');
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const pageHeight = doc.internal.pageSize.getHeight();
+        const margin = 14;
+        const contentWidth = pageWidth - (margin * 2);
+        const lineHeight = 3.5;
+        const boxPadding = 4;
+        
+        // Add title
+        doc.setFontSize(16);
+        doc.text('File Comparison Report', margin, 15);
+        doc.setFontSize(10);
+        doc.text('Generated: ' + new Date().toLocaleString(), margin, 22);
+        
+        let yPos = 32;
+        
+        // Helper function to add content box with dynamic height
+        function addFileBox(fileNum, diskPath, filePath, exists, content) {
+          // Check if we need a new page for header
+          if (yPos > pageHeight - 40) {
+            doc.addPage();
+            yPos = margin;
+          }
+          
+          // File header
+          doc.setFontSize(11);
+          doc.setFont(undefined, 'bold');
+          doc.text('File ' + fileNum + ':', margin, yPos);
+          doc.setFont(undefined, 'normal');
+          yPos += 5;
+          
+          doc.setFontSize(8);
+          doc.text('VM Disk: ' + diskPath, margin + 2, yPos);
+          yPos += 4;
+          doc.text('File Path: ' + filePath, margin + 2, yPos);
+          yPos += 4;
+          doc.text('Exists: ' + (exists ? 'Yes' : 'No'), margin + 2, yPos);
+          yPos += 6;
+          
+          // Prepare content lines
+          doc.setFontSize(7);
+          doc.setFont('courier', 'normal');
+          const contentLines = doc.splitTextToSize(content || '[EMPTY]', contentWidth - (boxPadding * 2));
+          
+          // Calculate box height needed
+          const contentHeight = (contentLines.length * lineHeight) + (boxPadding * 2);
+          const boxStartY = yPos;
+          
+          // Draw content with page breaks if needed
+          let currentLine = 0;
+          while (currentLine < contentLines.length) {
+            // Check if we need a new page
+            if (yPos + lineHeight > pageHeight - margin) {
+              doc.addPage();
+              yPos = margin;
+            }
+            
+            doc.text(contentLines[currentLine], margin + boxPadding, yPos + boxPadding);
+            yPos += lineHeight;
+            currentLine++;
+          }
+          
+          // Draw box border (simplified - just around first page content)
+          doc.setDrawColor(100, 100, 100);
+          const boxHeight = Math.min(contentHeight, pageHeight - boxStartY - margin);
+          doc.rect(margin, boxStartY, contentWidth, boxHeight);
+          
+          yPos += boxPadding + 4;
+        }
+        
+        // Add File 1
+        addFileBox(1, compareData.disk1, compareData.path1, compareData.exists1, compareData.content1);
+        
+        // Add some space between files
+        yPos += 6;
+        
+        // Add File 2
+        addFileBox(2, compareData.disk2, compareData.path2, compareData.exists2, compareData.content2);
+        
+        // Add note at bottom
+        yPos += 6;
+        if (yPos > pageHeight - 20) {
+          doc.addPage();
+          yPos = margin;
+        }
+        doc.setFont(undefined, 'normal');
+        doc.setFontSize(8);
+        doc.text('Note: For detailed side-by-side diff, use the web interface.', margin, yPos);
+        yPos += 5;
+        doc.text('Binary Mode: ' + (compareData.binary ? 'Yes (Hex)' : 'No (Text)'), margin, yPos);
+        
+        // Save the PDF
+        doc.save('file-compare-' + new Date().toISOString().slice(0,10) + '.pdf');
+      }
+
+      document.addEventListener('DOMContentLoaded', function(){
+        const downloadBtn = document.getElementById('downloadJson');
+        const exportBtn = document.getElementById('exportPdf');
+        
+        if (downloadBtn) {
+          downloadBtn.addEventListener('click', downloadJSON);
+        }
+        if (exportBtn) {
+          exportBtn.addEventListener('click', exportPDF);
+        }
+      });
+    })();
+  </script>
 {% endif %}
 {% endblock %}

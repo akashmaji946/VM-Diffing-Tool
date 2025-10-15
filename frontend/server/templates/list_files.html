@@ -3,10 +3,16 @@
 {% block content %}
 <h2>List Files With Metadata</h2>
 <style>
-  /* Widen the Last Modified column */
-  table th.col-mtime, table td.col-mtime { min-width: 240px; }
-  /* DataTables tweaks */
-  table.dataTable thead th { cursor: pointer; }
+  /* AG Grid styling adjustments for both themes */
+  .ag-theme-alpine,
+  .ag-theme-alpine-dark {
+    --ag-font-size: 13px;
+    --ag-font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  }
+  #agGrid {
+    height: 600px;
+    width: 100%;
+  }
 </style>
 <form method="post">
   <label>Disk Path
@@ -20,81 +26,209 @@
 
 {% if result is not none %}
   <h3>Results</h3>
-  <table id="resultsTable" class="display" style="width:100%">
-    <thead>
-      <tr>
-        <th>Size</th>
-        <th>Permission</th>
-        <th class="col-mtime">Last Modified</th>
-        <th>Name</th>
-        <!-- hidden sortable helpers -->
-        <th>_size_sort</th>
-        <th>_mtime_sort</th>
-      </tr>
-    </thead>
-    <tbody>
-    {% for row in result %}
-      <tr>
-        <td class="mono">{{ row['size'] }}</td>
-        <td class="mono">{{ row['perms'] }}</td>
-        <td class="mono col-mtime">{{ row['mtime'] }}</td>
-        <td class="mono">{{ row['path'] }}</td>
-        <!-- hidden sortable values populated by JS -->
-        <td class="mono"></td>
-        <td class="mono"></td>
-      </tr>
-    {% endfor %}
-    </tbody>
-  </table>
+  {% if cache_file %}
+    <p style="font-size: 0.85rem; color: #888;">
+      <em>Data cached at: {{ cache_file }}</em>
+    </p>
+  {% endif %}
+  <div style="margin-bottom: 1rem;">
+    <button id="downloadJson" class="outline" style="margin-right: 0.5rem;">
+      📥 Download JSON
+    </button>
+    <button id="exportPdf" class="outline">
+      📄 Export PDF
+    </button>
+  </div>
+  <div id="agGrid" class="ag-theme-alpine"></div>
+  
   <script>
     (function(){
-      // Fill hidden columns with numeric values for robust sorting
-      function normalize() {
-        const rows = document.querySelectorAll('#resultsTable tbody tr');
-        rows.forEach(function(tr){
-          const tds = tr.cells;
-          // indexes: 0=size, 2=mtime, 4=_size_sort, 5=_mtime_sort
-          const sizeText = (tds[0]?.textContent || '').replace(/[\s,]/g, '');
-          const sizeNum = parseInt(sizeText, 10);
-          if (tds[4]) tds[4].textContent = isNaN(sizeNum) ? '' : String(sizeNum);
+      // Store data from server
+      const rawData = {{ result | tojson }};
+      let gridApi = null;
+      
+      function getThemeClass() {
+        const theme = document.documentElement.getAttribute('data-theme') || 'light';
+        return theme === 'dark' ? 'ag-theme-alpine-dark' : 'ag-theme-alpine';
+      }
 
-          const mtxt = (tds[2]?.textContent || '').trim();
-          const ms = Date.parse(mtxt.replace(' ', 'T'));
-          if (tds[5]) tds[5].textContent = isNaN(ms) ? '' : String(ms);
+      function updateGridTheme() {
+        const gridDiv = document.querySelector('#agGrid');
+        if (!gridDiv) return;
+        
+        // Remove both theme classes
+        gridDiv.classList.remove('ag-theme-alpine', 'ag-theme-alpine-dark');
+        // Add the appropriate theme class
+        gridDiv.classList.add(getThemeClass());
+      }
+      
+      function initAGGrid() {
+        if (!window.agGrid) {
+          // Wait until AG Grid is loaded
+          return setTimeout(initAGGrid, 100);
+        }
+
+        // Parse and prepare data
+        const rowData = rawData.map(function(row, idx) {
+          // Parse size (remove commas and convert to number)
+          const sizeText = (row.size || '').toString().replace(/[\s,]/g, '');
+          const sizeNum = parseInt(sizeText, 10) || 0;
+          
+          // Parse mtime to Date object
+          const mtimeStr = (row.mtime || '').trim();
+          const mtimeDate = mtimeStr ? new Date(mtimeStr.replace(' ', 'T')) : null;
+          
+          return {
+            size: sizeNum,
+            sizeDisplay: row.size,
+            perms: row.perms || '',
+            mtime: mtimeDate,
+            mtimeDisplay: row.mtime || '',
+            path: row.path || ''
+          };
+        });
+
+        // Column definitions
+        const columnDefs = [
+          {
+            field: 'sizeDisplay',
+            headerName: 'Size',
+            width: 130,
+            filter: 'agTextColumnFilter',
+            comparator: function(valueA, valueB, nodeA, nodeB) {
+              return nodeA.data.size - nodeB.data.size;
+            }
+          },
+          {
+            field: 'perms',
+            headerName: 'Permissions',
+            width: 140,
+            filter: 'agTextColumnFilter'
+          },
+          {
+            field: 'mtimeDisplay',
+            headerName: 'Last Modified',
+            width: 220,
+            filter: 'agTextColumnFilter',
+            comparator: function(valueA, valueB, nodeA, nodeB) {
+              const dateA = nodeA.data.mtime;
+              const dateB = nodeB.data.mtime;
+              if (!dateA && !dateB) return 0;
+              if (!dateA) return -1;
+              if (!dateB) return 1;
+              return dateA - dateB;
+            }
+          },
+          {
+            field: 'path',
+            headerName: 'Name',
+            flex: 1,
+            filter: 'agTextColumnFilter'
+          }
+        ];
+
+        // Grid options
+        const gridOptions = {
+          columnDefs: columnDefs,
+          rowData: rowData,
+          defaultColDef: {
+            sortable: true,
+            filter: true,
+            resizable: true,
+            floatingFilter: true
+          },
+          pagination: true,
+          paginationPageSize: 50,
+          paginationPageSizeSelector: [10, 25, 50, 100, 200, 500, 1000],
+          domLayout: 'normal'
+        };
+
+        // Set initial theme
+        updateGridTheme();
+
+        // Create the grid
+        const gridDiv = document.querySelector('#agGrid');
+        gridApi = agGrid.createGrid(gridDiv, gridOptions);
+
+        // Listen for theme changes
+        window.addEventListener('themechange', function() {
+          updateGridTheme();
         });
       }
 
-      function initDataTable(){
-        if (!(window.jQuery && window.jQuery.fn && window.jQuery.fn.dataTable)) {
-          // Wait until DataTables is available
-          return setTimeout(initDataTable, 50);
-        }
-        const $table = jQuery('#resultsTable');
-        if (!$table.length) return;
-        // Show loader when user sorts or searches (client-side only)
-        $table.on('order.dt search.dt page.dt', function(){ if (window.VMTS) window.VMTS.show(); });
-        $table.on('draw.dt', function(){ if (window.VMTS) window.VMTS.hide(); });
+      // Download JSON function
+      function downloadJSON() {
+        const dataStr = JSON.stringify(rawData, null, 2);
+        const dataBlob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(dataBlob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'vm-files-list-' + new Date().toISOString().slice(0,10) + '.json';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }
 
-        $table.DataTable({
-          processing: false, // client-side only
-          paging: true,
-          pageLength: 50,
-          order: [],
-          deferRender: true,
-          autoWidth: false,
-          columnDefs: [
-            { targets: 0, orderData: [4], width: '10%' }, // sort by hidden numeric size
-            { targets: 1, orderable: false, width: '12%' },
-            { targets: 2, orderData: [5], width: '28%' }, // sort by hidden epoch ms
-            { targets: 3, type: 'string', width: '50%' },
-            { targets: [4,5], visible: false, searchable: true }
-          ],
+      // Export PDF function
+      function exportPDF() {
+        if (!window.jspdf || !window.jspdf.jsPDF) {
+          alert('PDF library not loaded. Please refresh the page.');
+          return;
+        }
+        
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('l', 'mm', 'a4'); // landscape orientation
+        
+        // Add title
+        doc.setFontSize(16);
+        doc.text('VM Files List', 14, 15);
+        doc.setFontSize(10);
+        doc.text('Generated: ' + new Date().toLocaleString(), 14, 22);
+        
+        // Prepare table data
+        const tableData = rawData.map(function(row) {
+          return [
+            row.size || '',
+            row.perms || '',
+            row.mtime || '',
+            row.path || ''
+          ];
         });
+        
+        // Generate table
+        doc.autoTable({
+          head: [['Size', 'Permissions', 'Last Modified', 'Name']],
+          body: tableData,
+          startY: 28,
+          styles: { fontSize: 8, cellPadding: 2 },
+          headStyles: { fillColor: [66, 139, 202] },
+          columnStyles: {
+            0: { cellWidth: 25 },
+            1: { cellWidth: 30 },
+            2: { cellWidth: 45 },
+            3: { cellWidth: 'auto' }
+          },
+          margin: { left: 14, right: 14 }
+        });
+        
+        // Save the PDF
+        doc.save('vm-files-list-' + new Date().toISOString().slice(0,10) + '.pdf');
       }
 
       document.addEventListener('DOMContentLoaded', function(){
-        normalize();
-        initDataTable();
+        initAGGrid();
+        
+        // Attach button handlers
+        const downloadBtn = document.getElementById('downloadJson');
+        const exportBtn = document.getElementById('exportPdf');
+        
+        if (downloadBtn) {
+          downloadBtn.addEventListener('click', downloadJSON);
+        }
+        if (exportBtn) {
+          exportBtn.addEventListener('click', exportPDF);
+        }
       });
     })();
   </script>

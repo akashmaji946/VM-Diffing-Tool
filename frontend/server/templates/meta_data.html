@@ -13,6 +13,14 @@
 </form>
 
 {% if result is not none %}
+  <div style="margin-bottom: 1rem;">
+    <button id="downloadJson" class="outline" style="margin-right: 0.5rem;">
+      📥 Download JSON
+    </button>
+    <button id="exportPdf" class="outline">
+      📄 Export PDF
+    </button>
+  </div>
   <h3>Totals</h3>
   <ul>
     <li><strong>files_count</strong>: {{ result['files_count'] }}</li>
@@ -61,5 +69,108 @@
       {% endfor %}
     </tbody>
   </table>
+  
+  <script>
+    (function(){
+      const metaData = {{ result | tojson }};
+
+      function downloadJSON() {
+        const dataStr = JSON.stringify(metaData, null, 2);
+        const dataBlob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(dataBlob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'disk-metadata-' + new Date().toISOString().slice(0,10) + '.json';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }
+
+      function exportPDF() {
+        if (!window.jspdf || !window.jspdf.jsPDF) {
+          alert('PDF library not loaded. Please refresh the page.');
+          return;
+        }
+        
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('p', 'mm', 'a4');
+        
+        doc.setFontSize(16);
+        doc.text('Disk Metadata Report', 14, 15);
+        doc.setFontSize(10);
+        doc.text('Generated: ' + new Date().toLocaleString(), 14, 22);
+        
+        let yPos = 32;
+        doc.setFontSize(12);
+        doc.text('Totals', 14, yPos);
+        yPos += 7;
+        
+        doc.setFontSize(9);
+        doc.text('Files: ' + metaData.files_count, 14, yPos);
+        yPos += 5;
+        doc.text('Directories: ' + metaData.dirs_count, 14, yPos);
+        yPos += 5;
+        doc.text('Total File Bytes: ' + metaData.total_file_bytes, 14, yPos);
+        yPos += 5;
+        doc.text('Total Dir Bytes: ' + metaData.total_dir_bytes, 14, yPos);
+        yPos += 5;
+        doc.text('Total Bytes: ' + metaData.total_bytes, 14, yPos);
+        yPos += 10;
+        
+        // Per User table
+        doc.setFontSize(12);
+        doc.text('Per User', 14, yPos);
+        yPos += 5;
+        
+        const perUserData = metaData.per_user.map(function(row) {
+          return [row.uid, row.user, row.files, row.dirs, row.bytes];
+        });
+        
+        doc.autoTable({
+          head: [['UID', 'User', 'Files', 'Dirs', 'Bytes']],
+          body: perUserData,
+          startY: yPos,
+          styles: { fontSize: 8, cellPadding: 2 },
+          headStyles: { fillColor: [66, 139, 202] },
+          margin: { left: 14, right: 14 }
+        });
+        
+        yPos = doc.lastAutoTable.finalY + 10;
+        
+        // Per Group table
+        doc.setFontSize(12);
+        doc.text('Per Group', 14, yPos);
+        yPos += 5;
+        
+        const perGroupData = metaData.per_group.map(function(row) {
+          return [row.gid, row.group, row.files, row.dirs, row.bytes];
+        });
+        
+        doc.autoTable({
+          head: [['GID', 'Group', 'Files', 'Dirs', 'Bytes']],
+          body: perGroupData,
+          startY: yPos,
+          styles: { fontSize: 8, cellPadding: 2 },
+          headStyles: { fillColor: [66, 139, 202] },
+          margin: { left: 14, right: 14 }
+        });
+        
+        doc.save('disk-metadata-' + new Date().toISOString().slice(0,10) + '.pdf');
+      }
+
+      document.addEventListener('DOMContentLoaded', function(){
+        const downloadBtn = document.getElementById('downloadJson');
+        const exportBtn = document.getElementById('exportPdf');
+        
+        if (downloadBtn) {
+          downloadBtn.addEventListener('click', downloadJSON);
+        }
+        if (exportBtn) {
+          exportBtn.addEventListener('click', exportPDF);
+        }
+      });
+    })();
+  </script>
 {% endif %}
 {% endblock %}

@@ -4,6 +4,8 @@ import json
 import os
 import difflib
 import re
+import hashlib
+from pathlib import Path
 from typing import Any, Dict
 
 from flask import (
@@ -44,9 +46,39 @@ def list_files() -> str | Response:
         return redirect(url_for("list_files"))
 
     try:
+        # Create cache directory if it doesn't exist
+        cache_dir = Path(__file__).parent / ".cache"
+        cache_dir.mkdir(exist_ok=True)
+
+        # Generate cache key from disk path and verbose flag
+        cache_key = hashlib.sha256(f"{disk_path}:{verbose}".encode()).hexdigest()
+        cache_file = cache_dir / f"list_files_{cache_key}.json"
+
+        # Always clear cache and fetch fresh data from vmtool
+        # Remove existing cache file if it exists
+        if cache_file.exists():
+            cache_file.unlink()
+
+        # Fetch fresh data from vmtool
         entries = vmtool.list_files_with_metadata(disk_path, verbose)
         # entries is a list of dicts with keys: size, perms, mtime, path
-        return render_template("list_files.html", result=entries, disk_path=disk_path, verbose=verbose)
+
+        # Save to cache for potential future use (JSON download, etc.)
+        cache_data = {
+            "disk_path": disk_path,
+            "verbose": verbose,
+            "entries": entries,
+        }
+        with open(cache_file, "w") as f:
+            json.dump(cache_data, f, indent=2)
+
+        return render_template(
+            "list_files.html",
+            result=entries,
+            disk_path=disk_path,
+            verbose=verbose,
+            cache_file=str(cache_file),
+        )
     except Exception as e:  # noqa: BLE001
         flash(f"Error: {e}", "error")
         return redirect(url_for("list_files"))
@@ -234,6 +266,8 @@ def file_compare() -> str | Response:
                 "exists1": bool(exists1.get("exists")),
                 "exists2": bool(exists2.get("exists")),
                 "binary": binary,
+                "content1": content1 if exists1.get("exists") else "[FILE DOES NOT EXIST]",
+                "content2": content2 if exists2.get("exists") else "[FILE DOES NOT EXIST]",
             },
         )
     except Exception as e:  # noqa: BLE001
