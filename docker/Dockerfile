@@ -20,6 +20,7 @@ RUN apt-get update && apt-get install -y \
     qemu-utils \
     sqlite3 \
     libsqlite3-dev \
+    linux-image-generic \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -80,6 +81,15 @@ RUN if [ -f requirements.txt ]; then pip3 install --no-cache-dir -r requirements
 RUN mkdir -p /app/frontend/server/database && \
     mkdir -p /app/frontend/server/uploads && \
     chmod -R 755 /app/frontend/server
+
+# Configure libguestfs for Docker environment
+RUN mkdir -p /usr/lib/guestfs && \
+    update-guestfs-appliance || true
+
+# Set libguestfs environment variables
+ENV LIBGUESTFS_BACKEND=direct
+ENV LIBGUESTFS_DEBUG=1
+ENV LIBGUESTFS_TRACE=1
 
 # Copy environment sample file
 COPY frontend/server/.env.sample /app/frontend/server/.env.sample
