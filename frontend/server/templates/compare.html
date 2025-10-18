@@ -1,0 +1,364 @@
+{% extends 'base.html' %}
+{% block title %}Block Comparison{% endblock %}
+{% block content %}
+<h2>Block-Level Disk Comparison</h2>
+<p style="color: #888; margin-bottom: 2rem;">Compare two VM disk images block by block to identify differences</p>
+
+<form id="compareForm">
+  <div class="grid">
+    <div>
+      <label for="disk1">Disk 1 Path</label>
+      <input type="text" id="disk1" name="disk1" placeholder="/path/to/disk1.qcow2" required>
+    </div>
+    <div>
+      <label for="disk2">Disk 2 Path</label>
+      <input type="text" id="disk2" name="disk2" placeholder="/path/to/disk2.qcow2" required>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div>
+      <label for="block_size">Block Size (bytes)</label>
+      <input type="number" id="block_size" name="block_size" value="4096" min="512" step="512" required>
+    </div>
+    <div>
+      <label for="start_block">Start Block</label>
+      <input type="number" id="start_block" name="start_block" value="0" min="0" required>
+    </div>
+    <div>
+      <label for="end_block">End Block (-1 for last)</label>
+      <input type="number" id="end_block" name="end_block" value="-1" required>
+    </div>
+  </div>
+
+  <button type="submit" id="compareBtn">Compare Disks</button>
+</form>
+
+<div id="loading" style="display: none; text-align: center; margin: 2rem 0;">
+  <div aria-busy="true">Comparing disks... This may take a while...</div>
+</div>
+
+<div id="error" style="display: none; margin-top: 1rem;">
+  <article style="background-color: rgba(255, 0, 0, 0.1); border-left: 4px solid #ff0000;">
+    <p id="errorMessage"></p>
+  </article>
+</div>
+
+<div id="results" style="display: none; margin-top: 2rem;">
+  <h3>Comparison Results</h3>
+  
+  <div class="grid" style="margin-bottom: 1.5rem;">
+    <div>
+      <strong>VM 1:</strong> <span id="vm1Name"></span><br>
+      <strong>Total Blocks:</strong> <span id="vm1Blocks"></span>
+    </div>
+    <div>
+      <strong>VM 2:</strong> <span id="vm2Name"></span><br>
+      <strong>Total Blocks:</strong> <span id="vm2Blocks"></span>
+    </div>
+  </div>
+
+  <div class="grid" style="margin-bottom: 1.5rem;">
+    <div>
+      <strong>Block Size:</strong> <span id="resultBlockSize"></span> bytes
+    </div>
+    <div>
+      <strong>Range:</strong> Block <span id="resultStartBlock"></span> to <span id="resultEndBlock"></span>
+    </div>
+    <div>
+      <strong>Differing Blocks:</strong> <span id="totalDiffering"></span>
+    </div>
+  </div>
+
+  <div style="overflow-x: auto;">
+    <table role="grid">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Block Number</th>
+          <th>Offset (bytes)</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="resultsTable">
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+document.getElementById('compareForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (window.VMTS) window.VMTS.show();
+  
+  const disk1 = document.getElementById('disk1').value;
+  const disk2 = document.getElementById('disk2').value;
+  const block_size = parseInt(document.getElementById('block_size').value);
+  const start_block = parseInt(document.getElementById('start_block').value);
+  const end_block = parseInt(document.getElementById('end_block').value);
+  
+  document.getElementById('loading').style.display = 'block';
+  document.getElementById('error').style.display = 'none';
+  document.getElementById('results').style.display = 'none';
+  document.getElementById('compareBtn').setAttribute('aria-busy', 'true');
+  document.getElementById('compareBtn').disabled = true;
+  
+  try {
+    const response = await fetch('/api/compare', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        disk1,
+        disk2,
+        block_size,
+        start_block,
+        end_block
+      })
+    });
+
+// Inline Block Data Viewer Section
+(function(){
+  const container = document.createElement('section');
+  container.id = 'blockDataInline';
+  container.style.display = 'none';
+  container.style.marginTop = '2rem';
+  container.innerHTML = `
+    <h3>Block Data (Side-by-Side)</h3>
+    <div class="grid" style="align-items: end; margin-bottom: 0.75rem;">
+      <div>
+        <label>
+          <input type="checkbox" id="format_bits_inline" role="switch"> Show as Bits (default: Hex)
+        </label>
+      </div>
+      <div style="text-align: right;">
+        <button id="exportJsonBtn" class="secondary">Export JSON</button>
+        <button id="exportPdfBtn" class="secondary">Export PDF</button>
+      </div>
+    </div>
+    <div style="border: 1px solid #444; border-radius: 4px; overflow: hidden; margin-bottom: 1rem;">
+      <div style="max-height: 500px; overflow-y: auto;">
+        <table style="width: 100%; font-size: 0.85rem; font-family: monospace; border-collapse: collapse;">
+          <thead style="position: sticky; top: 0; background: var(--pico-card-background-color); z-index: 10;">
+            <tr>
+              <th style="padding: 0.5rem; border: 1px solid #444; width: 50%; text-align: left;">VM1: <span id="inlineVm1"></span></th>
+              <th style="padding: 0.5rem; border: 1px solid #444; width: 50%; text-align: left;">VM2: <span id="inlineVm2"></span></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="padding: 0; border: 1px solid #444; vertical-align: top;">
+                <pre id="inlineData1" class="mono" style="margin:0; background:#111; color:#0f0; padding:0.75rem; overflow:auto; max-height:500px;"></pre>
+              </td>
+              <td style="padding: 0; border: 1px solid #444; vertical-align: top;">
+                <pre id="inlineData2" class="mono" style="margin:0; background:#111; color:#0f0; padding:0.75rem; overflow:auto; max-height:500px;"></pre>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <small id="inlineMeta" style="display:block; margin-top:0.5rem; color:#888;"></small>
+  `;
+  document.querySelector('main .container') ?
+    document.querySelector('main .container').appendChild(container) :
+    document.body.appendChild(container);
+
+  // State
+  let currentCtx = null; // {disk1, disk2, block, size, format, data1, data2}
+
+  // Delegate clicks from comparison table
+  document.getElementById('resultsTable').addEventListener('click', async (ev) => {
+    const a = ev.target.closest('.view-data-link');
+    if (!a) return;
+    // Let the browser follow the href to /block-contents-compare with prefilled params
+    if (window.VMTS) window.VMTS.show();
+  });
+
+  // Format toggle
+  document.addEventListener('change', async (ev) => {
+    if (ev.target && ev.target.id === 'format_bits_inline') {
+      if (!currentCtx) return;
+      const format = ev.target.checked ? 'bits' : 'hex';
+      await fetchAndRenderInline({...currentCtx, format});
+    }
+  });
+
+  async function fetchAndRenderInline({disk1, disk2, block, size, format}) {
+    try {
+      if (window.VMTS) window.VMTS.show();
+      // two parallel requests to existing endpoint
+      const body1 = {disk: disk1, block_number: block, block_size: size, format};
+      const body2 = {disk: disk2, block_number: block, block_size: size, format};
+      const [r1, r2] = await Promise.all([
+        fetch('/api/block-data', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body1)}),
+        fetch('/api/block-data', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body2)}),
+      ]);
+      const d1 = await r1.json();
+      const d2 = await r2.json();
+      if (!r1.ok) throw new Error(d1.error || 'Failed to fetch VM1 block data');
+      if (!r2.ok) throw new Error(d2.error || 'Failed to fetch VM2 block data');
+
+      const data1 = d1[block.toString()] || '';
+      const data2 = d2[block.toString()] || '';
+      currentCtx = {disk1, disk2, block, size, format, data1, data2};
+      renderInline(currentCtx);
+    } catch (err) {
+      alert(err.message || err);
+    } finally {
+      if (window.VMTS) window.VMTS.hide();
+    }
+  }
+
+  function renderInline({disk1, disk2, block, size, format, data1, data2}) {
+    container.style.display = 'block';
+    document.getElementById('inlineVm1').textContent = `${disk1} — Block ${block} — ${format.toUpperCase()} — ${size} bytes`;
+    document.getElementById('inlineVm2').textContent = `${disk2} — Block ${block} — ${format.toUpperCase()} — ${size} bytes`;
+    document.getElementById('inlineMeta').textContent = `Block ${block} | Block size ${size} bytes | Format ${format.toUpperCase()}`;
+
+    const s1 = (format === 'hex') ? formatHex(data1) : formatBits(data1);
+    const s2 = (format === 'hex') ? formatHex(data2) : formatBits(data2);
+    document.getElementById('inlineData1').textContent = s1;
+    document.getElementById('inlineData2').textContent = s2;
+  }
+
+  function formatHex(s) {
+    const bytes = s.trim().split(/\s+/);
+    let out = '';
+    for (let i = 0; i < bytes.length; i += 16) {
+      const row = bytes.slice(i, i + 16);
+      const offset = i.toString(16).toUpperCase().padStart(4, '0');
+      out += `${offset}: ${row.join(' ')}\n`;
+    }
+    return out;
+  }
+
+  function formatBits(s) {
+    let out = '';
+    for (let i = 0; i < s.length; i += 64) {
+      const row = s.slice(i, i + 64);
+      const offset = (i/8|0).toString(16).toUpperCase().padStart(4, '0');
+      out += `${offset}: ${row}\n`;
+    }
+    return out;
+  }
+
+  
+
+  // Export buttons
+  document.addEventListener('click', function(ev){
+    if (!currentCtx) return;
+    if (ev.target && ev.target.id === 'exportJsonBtn') {
+      const s1 = (currentCtx.format==='hex') ? formatHex(currentCtx.data1) : formatBits(currentCtx.data1);
+      const s2 = (currentCtx.format==='hex') ? formatHex(currentCtx.data2) : formatBits(currentCtx.data2);
+      const payload = {
+        vm1: { name: currentCtx.disk1 },
+        vm2: { name: currentCtx.disk2 },
+        block: currentCtx.block,
+        block_size: currentCtx.size,
+        format: currentCtx.format,
+        data: { vm1: s1, vm2: s2 }
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `block_${currentCtx.block}_${currentCtx.format}.json`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+    if (ev.target && ev.target.id === 'exportPdfBtn') {
+      if (!window.jspdf || !window.jspdf.jsPDF) {
+        alert('jsPDF not loaded');
+        return;
+      }
+      const doc = new window.jspdf.jsPDF({orientation:'l'});
+      doc.setFont('courier','normal');
+      doc.setFontSize(10);
+      doc.setTextColor(0,0,0);
+      doc.text(`Block ${currentCtx.block} | Size ${currentCtx.size} | Format ${currentCtx.format.toUpperCase()}`, 10, 10);
+      const left = (currentCtx.format==='hex') ? formatHex(currentCtx.data1) : formatBits(currentCtx.data1);
+      const right = (currentCtx.format==='hex') ? formatHex(currentCtx.data2) : formatBits(currentCtx.data2);
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const colWidth = (pageWidth - 20) / 2;
+      const linesLeft = doc.splitTextToSize(left, colWidth);
+      const linesRight = doc.splitTextToSize(right, colWidth);
+      let y = 18;
+      doc.text('VM1: ' + currentCtx.disk1, 10, y);
+      doc.text('VM2: ' + currentCtx.disk2, 10 + colWidth + 10, y);
+      y += 6;
+      // Print columns
+      let yyLeft = y, yyRight = y;
+      for (let i=0; i<Math.max(linesLeft.length, linesRight.length); i++) {
+        if (yyLeft > doc.internal.pageSize.getHeight() - 10 || yyRight > doc.internal.pageSize.getHeight() - 10) {
+          doc.addPage();
+          yyLeft = 10; yyRight = 10;
+        }
+        if (i < linesLeft.length) { doc.text(linesLeft[i], 10, yyLeft); yyLeft += 4; }
+        if (i < linesRight.length) { doc.text(linesRight[i], 10 + colWidth + 10, yyRight); yyRight += 4; }
+      }
+      doc.save(`block_${currentCtx.block}_${currentCtx.format}.pdf`);
+    }
+  });
+})();
+    
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.error || 'Comparison failed');
+    }
+    
+    // Display metadata
+    document.getElementById('vm1Name').textContent = data.vm1.name;
+    document.getElementById('vm1Blocks').textContent = data.vm1.number_of_blocks.toLocaleString();
+    document.getElementById('vm2Name').textContent = data.vm2.name;
+    document.getElementById('vm2Blocks').textContent = data.vm2.number_of_blocks.toLocaleString();
+    document.getElementById('resultBlockSize').textContent = data.block_size.toLocaleString();
+    document.getElementById('resultStartBlock').textContent = data.start_block.toLocaleString();
+    document.getElementById('resultEndBlock').textContent = data.end_block.toLocaleString();
+    document.getElementById('totalDiffering').textContent = data.total_differing_blocks.toLocaleString();
+    
+    // Display differing blocks
+    const tbody = document.getElementById('resultsTable');
+    tbody.innerHTML = '';
+    
+    const differing_blocks = data.differing_blocks || {};
+    const entries = Object.entries(differing_blocks);
+    
+    if (entries.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align: center;">No differences found - disk images are identical at block level</td></tr>';
+    } else {
+      entries.forEach(([key, value]) => {
+        const blockNum = parseInt(value.replace('Block-', ''));
+        const offset = blockNum * block_size;
+        const row = document.createElement('tr');
+        const fmt = (document.getElementById('format_bits_inline') && document.getElementById('format_bits_inline').checked) ? 'bits' : 'hex';
+        const href = `/block-contents-compare?disk1=${encodeURIComponent(disk1)}&disk2=${encodeURIComponent(disk2)}&block=${blockNum}&size=${block_size}&format=${fmt}`;
+        row.innerHTML = `
+          <td>${key}</td>
+          <td>${blockNum.toLocaleString()}</td>
+          <td>${offset.toLocaleString()}</td>
+          <td>
+            <a href="${href}" class="view-data-link" style="font-size: 0.9rem;">View Data</a>
+          </td>
+        `;
+        tbody.appendChild(row);
+      });
+    }
+    
+    document.getElementById('results').style.display = 'block';
+    
+  } catch (error) {
+    document.getElementById('errorMessage').textContent = error.message;
+    document.getElementById('error').style.display = 'block';
+  } finally {
+    if (window.VMTS) window.VMTS.hide();
+    document.getElementById('loading').style.display = 'none';
+    const btn = document.getElementById('compareBtn');
+    btn.removeAttribute('aria-busy');
+    btn.disabled = false;
+    btn.textContent = 'Compare Disks';
+  }
+});
+</script>
+{% endblock %}

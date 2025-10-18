@@ -90,4 +90,28 @@ PYBIND11_MODULE(vmtool, m) {
           py::arg("directory"),
           py::arg("verbose") = false,
           "List all files in a directory recursively with serial numbers as keys. Returns dict with '1', '2', ... as keys and file paths as values, sorted alphabetically.");
+
+    m.def("list_blocks_difference_in_disks",
+          &vmtool::list_blocks_difference_in_disks,
+          py::arg("disk_path1"),
+          py::arg("disk_path2"),
+          py::arg("block_size") = 4096,
+          py::arg("start_block") = 0,
+          py::arg("end_block") = -1,
+          "Compare two disk images block by block and return differing block numbers.\n"
+          "Returns a dict with keys '1', '2', ... mapping to 'Block-N' where N is the block number.\n"
+          "start_block: starting block number (default 0)\n"
+          "end_block: ending block number (default -1 for last block)\n"
+          "Default block size is 4096 bytes.");
+
+    m.def("get_block_data_in_disk",
+          &vmtool::get_block_data_in_disk,
+          py::arg("disk_path"),
+          py::arg("block_number"),
+          py::arg("block_size") = 4096,
+          py::arg("format") = "hex",
+          "Read a specific block from a disk image and return its contents in the specified format.\n"
+          "Returns a dict with block number as key and formatted data as value.\n"
+          "format: 'hex' (uppercase hex bytes separated by spaces) or 'bits' (continuous bitstring).\n"
+          "Default block size is 4096 bytes.");
 }

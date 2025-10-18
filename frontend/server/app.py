@@ -771,6 +771,216 @@ def directory_diff() -> str | Response:
         return redirect(url_for("directory_diff"))
 
 
+@app.route("/compare")
+@login_required
+def compare_page() -> str:
+    """Block comparison page"""
+    return render_template("compare.html")
+
+
+@app.route("/block-data")
+@login_required
+def block_data_page() -> str:
+    """Block data viewer page"""
+    return render_template("block_data.html")
+
+
+@app.route("/api/compare", methods=["POST"])
+@login_required
+def api_compare() -> tuple[Dict[str, Any], int] | Dict[str, Any]:
+    """API endpoint to compare two disk images block by block"""
+    try:
+        data = request.json
+        disk1 = data.get("disk1")
+        disk2 = data.get("disk2")
+        block_size = int(data.get("block_size", 4096))
+        start_block = int(data.get("start_block", 0))
+        end_block = int(data.get("end_block", -1))
+        
+        if not disk1 or not disk2:
+            return {"error": "Both disk paths are required"}, 400
+        
+        if not os.path.exists(disk1):
+            return {"error": f"Disk 1 not found: {disk1}"}, 400
+        
+        if not os.path.exists(disk2):
+            return {"error": f"Disk 2 not found: {disk2}"}, 400
+        
+        # Call vmtool to compare disks
+        result = vmtool.list_blocks_difference_in_disks(
+            disk1, disk2, block_size, start_block, end_block
+        )
+        
+        return jsonify(result)
+    
+    except Exception as e:  # noqa: BLE001
+        return {"error": str(e)}, 500
+
+
+@app.route("/block-contents-compare", methods=["GET", "POST"])
+@login_required
+def block_contents_compare():
+    """Form to accept two images, block size, block number, and format. Displays side-by-side contents."""
+    try:
+        if request.method == "GET":
+            # Support direct navigation with query params from /compare
+            q = request.args
+            disk1_q = (q.get("disk1") or "").strip()
+            disk2_q = (q.get("disk2") or "").strip()
+            block_q = q.get("block")
+            size_q = q.get("size")
+            format_q = (q.get("format") or "hex").strip().lower()
+
+            if disk1_q and disk2_q and block_q is not None and size_q is not None:
+                # Attempt to compute directly and render
+                try:
+                    block_number = int(block_q)
+                    block_size = int(size_q)
+                    format_type = format_q if format_q in ("hex", "bits") else "hex"
+
+                    if not os.path.exists(disk1_q):
+                        flash(f"Disk 1 not found: {disk1_q}", "error")
+                        return render_template("block_contents_compare.html", result=None)
+                    if not os.path.exists(disk2_q):
+                        flash(f"Disk 2 not found: {disk2_q}", "error")
+                        return render_template("block_contents_compare.html", result=None)
+
+                    data1 = vmtool.get_block_data_in_disk(disk1_q, block_number, block_size, format_type)
+                    data2 = vmtool.get_block_data_in_disk(disk2_q, block_number, block_size, format_type)
+
+                    key = str(block_number)
+                    content1 = data1.get(key, "")
+                    content2 = data2.get(key, "")
+
+                    def format_hex(s: str) -> str:
+                        bytes_list = [b for b in s.strip().split() if b]
+                        lines = []
+                        for i in range(0, len(bytes_list), 16):
+                            row = bytes_list[i:i+16]
+                            offset = format(i, '04X')
+                            lines.append(f"{offset}: {' '.join(row)}")
+                        return "\n".join(lines)
+
+                    def format_bits(s: str) -> str:
+                        lines = []
+                        for i in range(0, len(s), 64):
+                            row = s[i:i+64]
+                            offset = format((i//8), '04X')
+                            lines.append(f"{offset}: {row}")
+                        return "\n".join(lines)
+
+                    formatted1 = format_hex(content1) if format_type == "hex" else format_bits(content1)
+                    formatted2 = format_hex(content2) if format_type == "hex" else format_bits(content2)
+
+                    result = {
+                        "disk1": disk1_q,
+                        "disk2": disk2_q,
+                        "block_number": block_number,
+                        "block_size": block_size,
+                        "format": format_type,
+                        "content1": formatted1,
+                        "content2": formatted2,
+                    }
+                    return render_template("block_contents_compare.html", result=result)
+                except Exception as _e:  # noqa: BLE001
+                    # Fallback to form if parsing/processing fails
+                    pass
+
+            # Default GET: show empty form
+            return render_template("block_contents_compare.html", result=None)
+
+        # POST
+        disk1 = request.form.get("disk_path_1", "").strip()
+        disk2 = request.form.get("disk_path_2", "").strip()
+        block_number = int(request.form.get("block_number", "0"))
+        block_size = int(request.form.get("block_size", "4096"))
+        format_type = request.form.get("format", "hex")
+
+        if not disk1 or not disk2:
+            flash("Both disk paths are required", "error")
+            return render_template("block_contents_compare.html", result=None)
+
+        if not os.path.exists(disk1):
+            flash(f"Disk 1 not found: {disk1}", "error")
+            return render_template("block_contents_compare.html", result=None)
+
+        if not os.path.exists(disk2):
+            flash(f"Disk 2 not found: {disk2}", "error")
+            return render_template("block_contents_compare.html", result=None)
+
+        # Fetch data via vmtool
+        data1 = vmtool.get_block_data_in_disk(disk1, block_number, block_size, format_type)
+        data2 = vmtool.get_block_data_in_disk(disk2, block_number, block_size, format_type)
+
+        key = str(block_number)
+        content1 = data1.get(key, "")
+        content2 = data2.get(key, "")
+
+        # Helper formatters mirroring JS formatting
+        def format_hex(s: str) -> str:
+            bytes_list = [b for b in s.strip().split() if b]
+            lines = []
+            for i in range(0, len(bytes_list), 16):
+                row = bytes_list[i:i+16]
+                offset = format(i, '04X')
+                lines.append(f"{offset}: {' '.join(row)}")
+            return "\n".join(lines)
+
+        def format_bits(s: str) -> str:
+            lines = []
+            for i in range(0, len(s), 64):
+                row = s[i:i+64]
+                offset = format((i//8), '04X')
+                lines.append(f"{offset}: {row}")
+            return "\n".join(lines)
+
+        formatted1 = format_hex(content1) if format_type == "hex" else format_bits(content1)
+        formatted2 = format_hex(content2) if format_type == "hex" else format_bits(content2)
+
+        result = {
+            "disk1": disk1,
+            "disk2": disk2,
+            "block_number": block_number,
+            "block_size": block_size,
+            "format": format_type,
+            "content1": formatted1,
+            "content2": formatted2,
+        }
+
+        return render_template("block_contents_compare.html", result=result)
+
+    except Exception as e:  # noqa: BLE001
+        flash(f"Error: {e}", "error")
+        return render_template("block_contents_compare.html", result=None)
+
+@app.route("/api/block-data", methods=["POST"])
+@login_required
+def api_block_data() -> tuple[Dict[str, Any], int] | Dict[str, Any]:
+    """API endpoint to get block data from a disk"""
+    try:
+        data = request.json
+        disk = data.get("disk")
+        block_number = int(data.get("block_number"))
+        block_size = int(data.get("block_size", 4096))
+        format_type = data.get("format", "hex")
+        
+        if not disk:
+            return {"error": "Disk path is required"}, 400
+        
+        if not os.path.exists(disk):
+            return {"error": f"Disk not found: {disk}"}, 400
+        
+        # Call vmtool to get block data
+        result = vmtool.get_block_data_in_disk(
+            disk, block_number, block_size, format_type
+        )
+        
+        return jsonify(result)
+    
+    except Exception as e:  # noqa: BLE001
+        return {"error": str(e)}, 500
+
+
 @app.errorhandler(404)
 def not_found(_: Exception) -> tuple[str, int]:
     return render_template("404.html"), 404

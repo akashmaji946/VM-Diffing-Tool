@@ -53,4 +53,22 @@ pybind11::dict list_all_filenames_in_disk(const std::string& disk_path, bool ver
 // list all filenames in a directory with serial numbers as keys
 pybind11::dict list_all_filenames_in_directory(const std::string& disk_path, const std::string& directory, bool verbose = false);
 
+// Compare two disk images block by block and return differing block numbers
+// Returns a dict with string keys "1", "2", etc. mapping to "Block-N" where N is the block number
+// start_block: starting block number (default 0)
+// end_block: ending block number (default -1 for last block)
+pybind11::dict list_blocks_difference_in_disks(const std::string& disk_path1, 
+                                                const std::string& disk_path2, 
+                                                size_t block_size = 4096,
+                                                int64_t start_block = 0,
+                                                int64_t end_block = -1);
+
+// Read a specific block from a disk image and return its contents in the specified format
+// Returns a dict with block number as key and formatted data as value
+// format: "hex" (uppercase hex bytes separated by spaces) or "bits" (continuous bitstring)
+pybind11::dict get_block_data_in_disk(const std::string& disk_path,
+                                       uint64_t block_number,
+                                       size_t block_size = 4096,
+                                       const std::string& format = "hex");
+
 } // namespace vmtool

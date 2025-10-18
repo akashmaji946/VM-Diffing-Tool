@@ -1,0 +1,264 @@
+{% extends "base.html" %}
+
+{% block title %}Block Contents Compare{% endblock %}
+
+{% block content %}
+<h2>Block Contents Compare</h2>
+<p>Enter two disk images, a block number, size, and format to view contents side by side.</p>
+
+<form method="POST">
+  <fieldset>
+    <legend>Inputs</legend>
+    <div class="grid">
+      <div>
+        <label for="disk_path_1">
+          Disk 1 Path (VM1)
+          <input type="text" id="disk_path_1" name="disk_path_1" placeholder="/path/to/disk1.qcow2" required {% if result %}value="{{ result.disk1 }}"{% endif %} />
+        </label>
+      </div>
+      <div>
+        <label for="disk_path_2">
+          Disk 2 Path (VM2)
+          <input type="text" id="disk_path_2" name="disk_path_2" placeholder="/path/to/disk2.qcow2" required {% if result %}value="{{ result.disk2 }}"{% endif %} />
+        </label>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div>
+        <label for="block_number">
+          Block Number
+          <input type="number" id="block_number" name="block_number" value="{% if result %}{{ result.block_number }}{% else %}0{% endif %}" min="0" required />
+        </label>
+      </div>
+      <div>
+        <label for="block_size">
+          Block Size (bytes)
+          <input type="number" id="block_size" name="block_size" value="{% if result %}{{ result.block_size }}{% else %}4096{% endif %}" min="512" step="512" required />
+        </label>
+      </div>
+      <div>
+        <label for="format">
+          Format
+          <select id="format" name="format">
+            <option value="hex" {% if result and result.format == 'hex' %}selected{% endif %}>Hex</option>
+            <option value="bits" {% if result and result.format == 'bits' %}selected{% endif %}>Bits</option>
+          </select>
+        </label>
+      </div>
+    </div>
+
+    <button type="submit">Compare Blocks</button>
+  </fieldset>
+</form>
+
+{% if result %}
+<hr />
+
+<!-- <h3>Side-by-Side Comparison</h3> -->
+<div style="border: 1px solid #444; border-radius: 4px; overflow: hidden; margin-bottom: 2rem; display: none;">
+  <div style="max-height: 500px; overflow-y: auto;">
+    <table style="width: 100%; font-size: 0.85rem; font-family: monospace; border-collapse: collapse;">
+      <thead style="position: sticky; top: 0; background: var(--pico-card-background-color); z-index: 10;">
+        <tr>
+          <th style="padding: 0.5rem; border: 1px solid #444; width: 50%; text-align: left;">
+            VM1: {{ result.disk1 }} | Block: {{ result.block_number }} | Size: {{ result.block_size }} | Format: {{ result.format | upper }}
+          </th>
+          <th style="padding: 0.5rem; border: 1px solid #444; width: 50%; text-align: left;">
+            VM2: {{ result.disk2 }} | Block: {{ result.block_number }} | Size: {{ result.block_size }} | Format: {{ result.format | upper }}
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="padding: 0; border: 1px solid #444; word-wrap: break-word; word-break: break-all; vertical-align: top; background-color: rgba(40, 167, 69, 0.05);">
+            <pre class="mono" style="margin:0; background:#111; color:#0f0; padding:0.75rem; overflow:auto; max-height:500px;">{{ result.content1 }}</pre>
+          </td>
+          <td style="padding: 0; border: 1px solid #444; word-wrap: break-word; word-break: break-all; vertical-align: top; background-color: rgba(40, 167, 69, 0.05);">
+            <pre class="mono" style="margin:0; background:#111; color:#0f0; padding:0.75rem; overflow:auto; max-height:500px;">{{ result.content2 }}</pre>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<details>
+  <summary>Metadata</summary>
+  <ul>
+    <li><strong>Block Number</strong>: {{ result.block_number }}</li>
+    <li><strong>Block Size</strong>: {{ result.block_size }}</li>
+    <li><strong>Format</strong>: {{ result.format | upper }}</li>
+  </ul>
+</details>
+
+<h3>Side-by-Side Comparison</h3>
+<div style="border: 1px solid #444; border-radius: 4px; overflow: hidden; margin-bottom: 2rem;">
+  <div style="max-height: 500px; overflow-y: auto;">
+    <table style="width: 100%; font-size: 0.85rem; font-family: monospace; border-collapse: collapse;">
+      <thead style="position: sticky; top: 0; background: var(--pico-card-background-color); z-index: 10;">
+        <tr>
+          <th style="padding: 0.5rem; border: 1px solid #444; width: 50%; text-align: left;">VM1: {{ result.disk1 }}</th>
+          <th style="padding: 0.5rem; border: 1px solid #444; width: 50%; text-align: left;">VM2: {{ result.disk2 }}</th>
+        </tr>
+      </thead>
+      <tbody id="diffBody">
+      </tbody>
+    </table>
+  </div>
+  <small style="display:block; color:#888; padding: 0.5rem;">Legend: removals (red), additions (amber), unchanged (light green), changes (yellow)</small>
+  <style>
+    .cell { padding: 0.25rem 0.5rem; border: 1px solid #444; word-wrap: break-word; word-break: break-all; }
+    .bg-eq { background-color: rgba(40, 167, 69, 0.05); }
+    .bg-del { background-color: rgba(220, 53, 69, 0.15); }
+    .bg-add { background-color: rgba(255, 193, 7, 0.15); }
+    .bg-chg { background-color: rgba(255, 255, 0, 0.15); }
+    .np { color: #888; font-style: italic; }
+    .hl-add { background: rgba(0,255,0,0.12); }
+    .hl-del { background: rgba(255,0,0,0.12); }
+  </style>
+</div>
+
+<div style="display:flex; gap:0.5rem;">
+  <form method="post" action="#" onsubmit="return exportJSON();">
+    <button type="submit" class="outline">Export JSON</button>
+  </form>
+  <form method="post" action="#" onsubmit="return exportPDF();">
+    <button type="submit" class="outline">Export PDF</button>
+  </form>
+</div>
+
+<script>
+function exportJSON(){
+  const vm1Name = '{{ result.disk1 }}';
+  const vm2Name = '{{ result.disk2 }}';
+  const block = {{ result.block_number }};
+  const blockSize = {{ result.block_size }};
+  const format = '{{ result.format }}';
+  const vm1Text = document.querySelector('pre.mono').textContent; // first pre
+  const vm2Text = document.querySelectorAll('pre.mono')[1].textContent; // second pre
+  const payload = {
+    vm1: { name: vm1Name },
+    vm2: { name: vm2Name },
+    block: block,
+    block_size: blockSize,
+    format: format,
+    data: { vm1: vm1Text, vm2: vm2Text }
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `block_${block}_${format}.json`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  return false;
+}
+function exportPDF(){
+  if (!window.jspdf || !window.jspdf.jsPDF) { alert('jsPDF not loaded'); return false; }
+  const vm1Name = '{{ result.disk1 }}';
+  const vm2Name = '{{ result.disk2 }}';
+  const block = {{ result.block_number }};
+  const blockSize = {{ result.block_size }};
+  const format = '{{ result.format | upper }}';
+  const left = document.querySelector('pre.mono').textContent;
+  const right = document.querySelectorAll('pre.mono')[1].textContent;
+  const doc = new window.jspdf.jsPDF({orientation:'l'});
+  doc.setFont('courier','normal');
+  doc.setFontSize(10);
+  doc.setTextColor(0,0,0);
+  doc.text(`Block ${block} | Size ${blockSize} | Format ${format}`, 10, 10);
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const colWidth = (pageWidth - 20) / 2;
+  const linesLeft = doc.splitTextToSize(left, colWidth);
+  const linesRight = doc.splitTextToSize(right, colWidth);
+  let y = 18;
+  doc.text('VM1: ' + vm1Name, 10, y);
+  doc.text('VM2: ' + vm2Name, 10 + colWidth + 10, y);
+  y += 6;
+  let yyLeft = y, yyRight = y;
+  for (let i=0; i<Math.max(linesLeft.length, linesRight.length); i++){
+    if (yyLeft > doc.internal.pageSize.getHeight() - 10 || yyRight > doc.internal.pageSize.getHeight() - 10){
+      doc.addPage(); yyLeft = 10; yyRight = 10;
+    }
+    if (i < linesLeft.length){ doc.text(linesLeft[i], 10, yyLeft); yyLeft += 4; }
+    if (i < linesRight.length){ doc.text(linesRight[i], 10 + colWidth + 10, yyRight); yyRight += 4; }
+  }
+  doc.save(`block_${block}_${format}.pdf`);
+  return false;
+}
+
+// Build HTML diff from the rendered contents
+(function(){
+  const preEls = document.querySelectorAll('pre.mono');
+  if (!preEls || preEls.length < 2) return;
+  const left = preEls[0].textContent.split('\n');
+  const right = preEls[1].textContent.split('\n');
+
+  // LCS table
+  const n = left.length, m = right.length;
+  const dp = Array.from({length:n+1}, ()=>Array(m+1).fill(0));
+  for (let i=n-1;i>=0;--i){
+    for (let j=m-1;j>=0;--j){
+      dp[i][j] = (left[i]===right[j]) ? dp[i+1][j+1]+1 : Math.max(dp[i+1][j], dp[i][j+1]);
+    }
+  }
+  // Backtrack to build operations
+  const ops = [];
+  let i=0,j=0;
+  while(i<n && j<m){
+    if(left[i]===right[j]){ ops.push({t:'eq', a:left[i], b:right[j]}); i++; j++; }
+    else if(dp[i+1][j] >= dp[i][j+1]){ ops.push({t:'del', a:left[i]}); i++; }
+    else { ops.push({t:'add', b:right[j]}); j++; }
+  }
+  while(i<n){ ops.push({t:'del', a:left[i++]}); }
+  while(j<m){ ops.push({t:'add', b:right[j++]}); }
+
+  // Collapse adjacent del+add into change rows
+  const rows = [];
+  for (let k=0; k<ops.length; k++){
+    const cur = ops[k], nxt = ops[k+1];
+    if (cur && nxt && cur.t==='del' && nxt.t==='add'){
+      rows.push({t:'chg', a:cur.a, b:nxt.b}); k++; // skip next
+    } else if (cur.t==='eq'){
+      rows.push({t:'eq', a:cur.a, b:cur.b});
+    } else if (cur.t==='del'){
+      rows.push({t:'del', a:cur.a, b:null});
+    } else if (cur.t==='add'){
+      rows.push({t:'add', a:null, b:cur.b});
+    }
+  }
+
+  // Intraline highlight for changes
+  function highlightChange(a, b){
+    if (a==null || b==null) return {ha:a, hb:b};
+    const A = a, B = b;
+    let s=0, eA=A.length-1, eB=B.length-1;
+    while (s<=eA && s<=eB && A[s]===B[s]) s++;
+    while (eA>=s && eB>=s && A[eA]===B[eB]) { eA--; eB--; }
+    const ha = A.slice(0,s) + '<span class="hl-del">' + A.slice(s,eA+1) + '</span>' + A.slice(eA+1);
+    const hb = B.slice(0,s) + '<span class="hl-add">' + B.slice(s,eB+1) + '</span>' + B.slice(eB+1);
+    return {ha, hb};
+  }
+
+  const tbody = document.getElementById('diffBody');
+  rows.forEach(r=>{
+    const tr = document.createElement('tr');
+    let leftHtml = '', rightHtml = '', clsLeft='cell', clsRight='cell';
+    if (r.t==='eq'){
+      leftHtml = r.a; rightHtml = r.b; clsLeft += ' bg-eq'; clsRight += ' bg-eq';
+    } else if (r.t==='del'){
+      leftHtml = r.a; rightHtml = '<em class="np">[not present]</em>'; clsLeft += ' bg-del'; clsRight += ' bg-del';
+    } else if (r.t==='add'){
+      leftHtml = '<em class="np">[not present]</em>'; rightHtml = r.b; clsLeft += ' bg-add'; clsRight += ' bg-add';
+    } else { // chg
+      const {ha, hb} = highlightChange(r.a||'', r.b||'');
+      leftHtml = ha; rightHtml = hb; clsLeft += ' bg-chg'; clsRight += ' bg-chg';
+    }
+    const tdL = document.createElement('td'); tdL.className = clsLeft; tdL.innerHTML = leftHtml || '';
+    const tdR = document.createElement('td'); tdR.className = clsRight; tdR.innerHTML = rightHtml || '';
+    tr.appendChild(tdL); tr.appendChild(tdR); tbody.appendChild(tr);
+  });
+})();
+</script>
+{% endif %}
+{% endblock %}

@@ -16,6 +16,10 @@
 #include <unistd.h>
 #include <cstdio>
 #include <bitset>
+#include <thread>
+#include <mutex>
+#include <cstring>
+#include <cmath>
 
 namespace py = pybind11;
 
@@ -1031,6 +1035,354 @@ pybind11::dict list_all_filenames_in_directory(const std::string& disk_path, con
     }
 
     return out;
+}
+
+// Helper structure for multithreaded block comparison
+struct BlockCompareWorker {
+    size_t thread_id;
+    std::string image1_path;
+    std::string image2_path;
+    uint64_t start_offset;
+    uint64_t end_offset;
+    size_t block_size;
+    std::vector<uint64_t>* differing_blocks;
+    std::mutex* results_mutex;
+    
+    void operator()() {
+        guestfs_h *g = nullptr;
+        try {
+            g = guestfs_create();
+            if (!g) {
+                throw std::runtime_error("Failed to create libguestfs handle for thread " + std::to_string(thread_id));
+            }
+
+            // Add both drives as read-only
+            if (guestfs_add_drive_opts(g, image1_path.c_str(), 
+                                       GUESTFS_ADD_DRIVE_OPTS_READONLY, 1, -1) == -1) {
+                throw std::runtime_error("Failed to add drive 1");
+            }
+            if (guestfs_add_drive_opts(g, image2_path.c_str(), 
+                                       GUESTFS_ADD_DRIVE_OPTS_READONLY, 1, -1) == -1) {
+                throw std::runtime_error("Failed to add drive 2");
+            }
+
+            if (guestfs_launch(g) == -1) {
+                throw std::runtime_error("guestfs_launch failed for thread " + std::to_string(thread_id));
+            }
+
+            char **devices = guestfs_list_devices(g);
+            if (!devices || !devices[0] || !devices[1]) {
+                throw std::runtime_error("Worker thread could not find two devices.");
+            }
+            std::string dev1 = devices[0];
+            std::string dev2 = devices[1];
+            free_string_list(devices);
+
+            std::vector<uint64_t> local_diffs;
+
+            for (uint64_t offset = start_offset; offset < end_offset; offset += block_size) {
+                size_t size1 = 0, size2 = 0;
+                char* buf1 = guestfs_pread_device(g, dev1.c_str(), block_size, offset, &size1);
+                if (!buf1) {
+                    // Skip this block if read fails instead of throwing
+                    continue;
+                }
+                if (size1 != block_size) {
+                    std::free(buf1);
+                    continue;
+                }
+                char* buf2 = guestfs_pread_device(g, dev2.c_str(), block_size, offset, &size2);
+                if (!buf2) {
+                    std::free(buf1);
+                    continue;
+                }
+                if (size2 != block_size) {
+                    std::free(buf1);
+                    std::free(buf2);
+                    continue;
+                }
+
+                if (std::memcmp(buf1, buf2, block_size) != 0) {
+                    local_diffs.push_back(offset / block_size);
+                }
+                std::free(buf1);
+                std::free(buf2);
+            }
+
+            // Lock before writing to the shared results vector
+            std::lock_guard<std::mutex> lock(*results_mutex);
+            differing_blocks->insert(differing_blocks->end(), local_diffs.begin(), local_diffs.end());
+
+        } catch (const std::exception& e) {
+            // Don't throw - just log and continue to allow other threads to finish
+            if (g) {
+                guestfs_close(g);
+            }
+            // Thread will exit gracefully
+            return;
+        }
+
+        if (g) {
+            guestfs_close(g);
+        }
+    }
+};
+
+pybind11::dict list_blocks_difference_in_disks(const std::string& disk_path1, 
+                                                const std::string& disk_path2, 
+                                                size_t block_size,
+                                                int64_t start_block,
+                                                int64_t end_block) {
+    uint64_t compare_size = 0;
+    guestfs_h *g_main = nullptr;
+
+    try {
+        g_main = guestfs_create();
+        if (!g_main) throw std::runtime_error("Failed to create main libguestfs handle");
+
+        if (guestfs_add_drive_opts(g_main, disk_path1.c_str(), 
+                                   GUESTFS_ADD_DRIVE_OPTS_READONLY, 1, -1) == -1) {
+            throw std::runtime_error("Failed to add drive 1");
+        }
+        if (guestfs_add_drive_opts(g_main, disk_path2.c_str(), 
+                                   GUESTFS_ADD_DRIVE_OPTS_READONLY, 1, -1) == -1) {
+            throw std::runtime_error("Failed to add drive 2");
+        }
+        if (guestfs_launch(g_main) == -1) throw std::runtime_error("Main handle launch failed");
+
+        char **devices = guestfs_list_devices(g_main);
+        if (!devices || !devices[0] || !devices[1]) throw std::runtime_error("Could not find two devices");
+
+        int64_t size1 = guestfs_blockdev_getsize64(g_main, devices[0]);
+        int64_t size2 = guestfs_blockdev_getsize64(g_main, devices[1]);
+
+        free_string_list(devices);
+        guestfs_close(g_main);
+        g_main = nullptr;
+
+        if (size1 < 0 || size2 < 0) {
+            throw std::runtime_error("Failed to get device sizes");
+        }
+
+        compare_size = std::min(static_cast<uint64_t>(size1), static_cast<uint64_t>(size2));
+
+    } catch (const std::exception& e) {
+        if (g_main) {
+            guestfs_close(g_main);
+        }
+        throw std::runtime_error(std::string("Error during initial size check: ") + e.what());
+    }
+
+    // Use single thread to avoid resource exhaustion
+    std::vector<uint64_t> all_differing_blocks;
+    uint64_t total_blocks = 0;
+    uint64_t start_block_num = 0;
+    uint64_t end_block_num = 0;
+    
+    guestfs_h *g = guestfs_create();
+    if (!g) {
+        throw std::runtime_error("Failed to create libguestfs handle");
+    }
+
+    try {
+        // Add both drives as read-only
+        if (guestfs_add_drive_opts(g, disk_path1.c_str(), 
+                                   GUESTFS_ADD_DRIVE_OPTS_READONLY, 1, -1) == -1) {
+            throw std::runtime_error("Failed to add drive 1");
+        }
+        if (guestfs_add_drive_opts(g, disk_path2.c_str(), 
+                                   GUESTFS_ADD_DRIVE_OPTS_READONLY, 1, -1) == -1) {
+            throw std::runtime_error("Failed to add drive 2");
+        }
+
+        if (guestfs_launch(g) == -1) {
+            throw std::runtime_error("guestfs_launch failed");
+        }
+
+        char **devices = guestfs_list_devices(g);
+        if (!devices || !devices[0] || !devices[1]) {
+            throw std::runtime_error("Could not find two devices.");
+        }
+        std::string dev1 = devices[0];
+        std::string dev2 = devices[1];
+        free_string_list(devices);
+
+        total_blocks = compare_size / block_size;
+        
+        // Calculate start and end offsets
+        start_block_num = (start_block < 0) ? 0 : static_cast<uint64_t>(start_block);
+        end_block_num = (end_block < 0) ? total_blocks : std::min(static_cast<uint64_t>(end_block), total_blocks);
+        
+        if (start_block_num >= total_blocks) {
+            throw std::runtime_error("start_block is beyond disk size");
+        }
+        
+        uint64_t start_offset = start_block_num * block_size;
+        uint64_t end_offset = end_block_num * block_size;
+        uint64_t block_num = start_block_num;
+
+        py::print("Comparing blocks", start_block_num, "to", end_block_num, "of", total_blocks);
+
+        for (uint64_t offset = start_offset; offset < end_offset; offset += block_size) {
+            // Print progress every 100 blocks
+            if (block_num % 1 == 0) {
+                py::print("Comparing block", block_num, "of", end_block_num);
+            }
+            
+            size_t size1 = 0, size2 = 0;
+            char* buf1 = guestfs_pread_device(g, dev1.c_str(), block_size, offset, &size1);
+            if (!buf1) {
+                block_num++;
+                continue;
+            }
+            if (size1 != block_size) {
+                std::free(buf1);
+                block_num++;
+                continue;
+            }
+            char* buf2 = guestfs_pread_device(g, dev2.c_str(), block_size, offset, &size2);
+            if (!buf2) {
+                std::free(buf1);
+                block_num++;
+                continue;
+            }
+            if (size2 != block_size) {
+                std::free(buf1);
+                std::free(buf2);
+                block_num++;
+                continue;
+            }
+
+            if (std::memcmp(buf1, buf2, block_size) != 0) {
+                all_differing_blocks.push_back(block_num);
+            }
+            std::free(buf1);
+            std::free(buf2);
+            block_num++;
+        }
+
+        guestfs_close(g);
+
+    } catch (const std::exception& e) {
+        if (g) {
+            guestfs_close(g);
+        }
+        throw;
+    }
+
+    // Sort the differing blocks
+    std::sort(all_differing_blocks.begin(), all_differing_blocks.end());
+
+    // Build dictionary with metadata and differing blocks
+    pybind11::dict out;
+    
+    // Add metadata
+    pybind11::dict vm1_info;
+    vm1_info[py::str("name")] = py::str(disk_path1);
+    vm1_info[py::str("number_of_blocks")] = py::int_(total_blocks);
+    out[py::str("vm1")] = vm1_info;
+    
+    pybind11::dict vm2_info;
+    vm2_info[py::str("name")] = py::str(disk_path2);
+    vm2_info[py::str("number_of_blocks")] = py::int_(total_blocks);
+    out[py::str("vm2")] = vm2_info;
+    
+    out[py::str("block_size")] = py::int_(block_size);
+    out[py::str("start_block")] = py::int_(start_block_num);
+    out[py::str("end_block")] = py::int_(end_block_num);
+    out[py::str("total_differing_blocks")] = py::int_(all_differing_blocks.size());
+    
+    // Add differing blocks
+    pybind11::dict differing_blocks_dict;
+    for (size_t i = 0; i < all_differing_blocks.size(); ++i) {
+        std::string key = std::to_string(i + 1);
+        std::string value = "Block-" + std::to_string(all_differing_blocks[i]);
+        differing_blocks_dict[py::str(key)] = py::str(value);
+    }
+    out[py::str("differing_blocks")] = differing_blocks_dict;
+
+    return out;
+}
+
+pybind11::dict get_block_data_in_disk(const std::string& disk_path,
+                                       uint64_t block_number,
+                                       size_t block_size,
+                                       const std::string& format) {
+    guestfs_h *g = guestfs_create();
+    if (!g) {
+        throw std::runtime_error("Failed to create libguestfs handle");
+    }
+
+    try {
+        // Add drive as read-only
+        if (guestfs_add_drive_opts(g, disk_path.c_str(), 
+                                   GUESTFS_ADD_DRIVE_OPTS_READONLY, 1, -1) == -1) {
+            throw std::runtime_error("Failed to add drive");
+        }
+
+        if (guestfs_launch(g) == -1) {
+            throw std::runtime_error("guestfs_launch failed");
+        }
+
+        char **devices = guestfs_list_devices(g);
+        if (!devices || !devices[0]) {
+            throw std::runtime_error("Could not find device");
+        }
+        std::string dev = devices[0];
+        free_string_list(devices);
+
+        // Calculate offset from block number
+        uint64_t offset = block_number * block_size;
+
+        // Read the block
+        size_t size_read = 0;
+        char* buffer = guestfs_pread_device(g, dev.c_str(), block_size, offset, &size_read);
+        if (!buffer || size_read != block_size) {
+            if (buffer) std::free(buffer);
+            throw std::runtime_error("Failed to read block " + std::to_string(block_number));
+        }
+
+        std::string formatted_data;
+
+        if (format == "hex") {
+            // Format as uppercase hex bytes separated by spaces
+            std::ostringstream oss;
+            for (size_t i = 0; i < size_read; ++i) {
+                if (i > 0) oss << " ";
+                oss << std::uppercase << std::hex << std::setw(2) << std::setfill('0')
+                    << (static_cast<unsigned int>(static_cast<unsigned char>(buffer[i])));
+            }
+            formatted_data = oss.str();
+        } else if (format == "bits") {
+            // Format as continuous bitstring
+            std::ostringstream oss;
+            for (size_t i = 0; i < size_read; ++i) {
+                std::bitset<8> bits(static_cast<unsigned char>(buffer[i]));
+                oss << bits.to_string();
+            }
+            formatted_data = oss.str();
+        } else {
+            std::free(buffer);
+            guestfs_close(g);
+            throw std::runtime_error("Invalid format: " + format + ". Use 'hex' or 'bits'");
+        }
+
+        std::free(buffer);
+        guestfs_close(g);
+
+        // Build dictionary with block number as key
+        pybind11::dict out;
+        std::string key = std::to_string(block_number);
+        out[py::str(key)] = py::str(formatted_data);
+
+        return out;
+
+    } catch (const std::exception& e) {
+        if (g) {
+            guestfs_close(g);
+        }
+        throw;
+    }
 }
 
 } // namespace vmtool

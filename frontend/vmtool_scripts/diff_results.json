@@ -1,0 +1,19 @@
+{
+  "vm1": {
+    "name": "/home/akashmaji/Desktop/vm3.qcow2",
+    "number_of_blocks": 3932160
+  },
+  "vm2": {
+    "name": "/home/akashmaji/Desktop/vm3c.qcow2",
+    "number_of_blocks": 3932160
+  },
+  "block_size": 4096,
+  "start_block": 0,
+  "end_block": 1000,
+  "total_differing_blocks": 3,
+  "differing_blocks": {
+    "1": "Block-256",
+    "2": "Block-257",
+    "3": "Block-258"
+  }
+}
