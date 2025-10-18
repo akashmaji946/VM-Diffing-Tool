@@ -107,15 +107,17 @@ pip install -r requirements.txt
 
 1. **Create `.env` file**:
 ```bash
-cp .env.example .env
+cp .env.sample .env
 ```
+
+Refer file `.env.sample` (inside `frontend/server`) for more details.
 
 2. **Configure Gmail OAuth** (for email verification):
 ```env
 GMAIL_USER=your-email@gmail.com
 GMAIL_APP_PASSWORD=your-app-password
 EMAIL_VERIFICATION_REQUIRED=True
-BASE_URL=http://localhost:8000
+BASE_URL=http://localhost:8000 #or your domain
 ```
 
 3. **Generate Secret Key**:
