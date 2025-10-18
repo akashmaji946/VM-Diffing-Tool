@@ -39,6 +39,7 @@ from models import db, User
 
 app = Flask(__name__)
 app.config.from_object(Config)
+DOCS_BASE_URL = os.environ.get("DOCS_BASE_URL", "https://akashmaji946.github.io/VM-Diffing-Tool/")
 
 # Initialize extensions
 db.init_app(app)
@@ -52,9 +53,26 @@ def load_user(user_id: int) -> User | None:
     """Load user by ID for Flask-Login."""
     return User.query.get(int(user_id))
 
-# Create database tables
+# Create database tables and seed default admin user
 with app.app_context():
     db.create_all()
+    try:
+        admin = User.query.filter_by(username="admin").first()
+        if not admin:
+            admin = User(username="admin", email="admin@example.com")
+            admin.set_password("12345678")
+            admin.is_verified = True  # ensure login without email verification
+            db.session.add(admin)
+            db.session.commit()
+            print("[INIT] Seeded default admin user: username='admin', password='12345678'")
+        else:
+            # Ensure admin is verified to avoid login blockers
+            if not admin.is_verified:
+                admin.is_verified = True
+                db.session.commit()
+    except Exception as _e:
+        # Avoid crashing server on seed failure; logs will show details
+        print(f"[INIT] Admin seed skipped due to error: {_e}")
 
 # Print banner on server start
 print("""
@@ -771,6 +789,20 @@ def directory_diff() -> str | Response:
         flash(f"Error: {e}", "error")
         return redirect(url_for("directory_diff"))
 
+
+@app.route("/guide")
+@login_required
+def guide_redirect() -> Response:
+    """Redirect in-app Docs menu to hosted GitHub Pages docs."""
+    return redirect(DOCS_BASE_URL, code=302)
+
+
+@app.route("/docs")
+@app.route("/docs/<path:page>")
+@login_required
+def docs_redirect(page: str | None = None) -> Response:
+    """Redirect legacy docs routes to hosted GitHub Pages docs."""
+    return redirect(DOCS_BASE_URL, code=302)
 
 @app.route("/compare")
 @login_required

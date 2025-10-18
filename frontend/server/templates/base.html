@@ -210,7 +210,7 @@
           <a href="/compare">Block Compare</a>
           <a href="/block-data">Block Data Viewer</a>
           <a href="/block-contents-compare">Block Contents Compare</a>
-          <a href="/guide">Docs</a>
+          <a href="https://akashmaji946.github.io/VM-Diffing-Tool/" target="_blank" rel="noopener">Docs</a>
         {% else %}
           <a href="/login">Login</a>
           <a href="/signup">Sign Up</a>
@@ -321,7 +321,13 @@
         if (href.startsWith('#')) return;
         try {
           const url = new URL(href, window.location.origin);
-          if (url.origin !== window.location.origin) return; // external
+          // Do not show loader for new tab links
+          if ((a.getAttribute('target') || '').toLowerCase() === '_blank') return;
+          // Do not show loader for external links
+          if (url.origin !== window.location.origin) return;
+          // Do not show loader when rel contains noopener or external hints
+          const rel = (a.getAttribute('rel') || '').toLowerCase();
+          if (rel.includes('noopener') || rel.includes('noreferrer') || rel.includes('external')) return;
           if (window.VMTS) window.VMTS.show();
         } catch { /* noop */ }
       }, true);
