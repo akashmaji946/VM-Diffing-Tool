@@ -1,0 +1,7 @@
+pyproject.toml
+vmt/vmt.py
+vmt.egg-info/PKG-INFO
+vmt.egg-info/SOURCES.txt
+vmt.egg-info/dependency_links.txt
+vmt.egg-info/entry_points.txt
+vmt.egg-info/top_level.txt

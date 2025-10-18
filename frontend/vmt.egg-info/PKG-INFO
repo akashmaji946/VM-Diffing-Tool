@@ -1,0 +1,11 @@
+Metadata-Version: 2.4
+Name: vmt
+Version: 0.1.0
+Summary: VMT CLI for VM disk inspection using vmtool backend
+Author: VMT Team
+Keywords: vm,qcow2,guestfs,vmtool,vmt
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: POSIX :: Linux
+Requires-Python: >=3.12
+Description-Content-Type: text/markdown

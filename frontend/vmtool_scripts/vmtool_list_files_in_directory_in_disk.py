@@ -37,3 +37,11 @@ sudo python3 vmtool_list_files_in_directory_in_disk.py \
     --directory /full/path/to/directory \
     [--detailed]
 """
+
+# example input
+"""
+sudo python3 vmtool_list_files_in_directory_in_disk.py \
+    --disk /home/akashmaji/Desktop/vm1.qcow2 \
+    --directory /etc \
+    --detailed
+"""

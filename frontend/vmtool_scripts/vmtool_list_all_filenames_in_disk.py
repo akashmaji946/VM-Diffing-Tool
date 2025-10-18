@@ -35,3 +35,18 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+
+# USAGE
+"""
+sudo python3 vmtool_list_all_filenames_in_disk.py \
+    --disk /full/path/to/disk.qcow2 \
+    [--json /full/path/to/output.json] 
+"""
+
+# example input
+"""
+sudo python3 vmtool_list_all_filenames_in_disk.py \
+    --disk /home/akashmaji/Desktop/vm1.qcow2 \
+    --json $PWD/output.json
+"""

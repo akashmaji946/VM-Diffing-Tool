@@ -1,0 +1,2 @@
+[console_scripts]
+vmt = vmt.vmt:main

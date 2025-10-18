@@ -55,4 +55,13 @@ sudo python3 vmtool_list_all_files_in_disk.py \
     [--verbose]
 """
 
+# example input
+"""
+sudo python3 vmtool_list_all_files_in_disk.py \
+    --file /home/akashmaji/Desktop/vm1.qcow2 \
+    --out $PWD/output.txt \
+    --verbose
+"""
+
+
 
