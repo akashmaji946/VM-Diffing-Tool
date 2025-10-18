@@ -4,6 +4,8 @@ A powerful web-based tool for analyzing and comparing virtual machine disk image
 
 ![ascii-art-text](images/ascii-art-text.png)
 
+Go to Docs here: [VM-Diffing-Tool Docs](https://github.com/akashmaji946/VM-Diffing-Tool)
+
 ## 🌟 Features
 
 ### VM Disk Analysis
