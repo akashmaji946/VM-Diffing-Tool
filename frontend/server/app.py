@@ -11,14 +11,15 @@ from datetime import datetime
 
 from flask import (
     Flask,
-    render_template,
-    request,
-    redirect,
-    url_for,
+    Response,
     flash,
     jsonify,
+    redirect,
+    render_template,
+    request,
     send_file,
-    Response,
+    send_from_directory,
+    url_for,
 )
 from flask_login import (
     LoginManager,
@@ -817,6 +818,34 @@ def api_compare() -> tuple[Dict[str, Any], int] | Dict[str, Any]:
         return {"error": str(e)}, 500
 
 
+@app.route("/api/list-files", methods=["POST"])
+@login_required
+def api_list_files() -> tuple[Dict[str, Any], int] | Dict[str, Any]:
+    """API endpoint to list files with metadata from a disk image.
+
+    Request JSON:
+    {
+      "disk_path": "/path/to/disk.qcow2",
+      "verbose": true
+    }
+    """
+    try:
+        data = request.json or {}
+        disk_path = (data.get("disk_path") or "").strip()
+        verbose = bool(data.get("verbose", False))
+        if not disk_path:
+            return {"error": "'disk_path' is required"}, 400
+
+        if not os.path.exists(disk_path):
+            return {"error": f"Disk not found: {disk_path}"}, 400
+
+        entries = vmtool.list_files_with_metadata(disk_path, verbose)
+        # entries: list[ {size, perms, mtime, path} ]
+        return {"disk_path": disk_path, "verbose": verbose, "entries": entries}
+    except Exception as e:  # noqa: BLE001
+        return {"error": str(e)}, 500
+
+
 @app.route("/block-contents-compare", methods=["GET", "POST"])
 @login_required
 def block_contents_compare():
@@ -952,6 +981,23 @@ def block_contents_compare():
     except Exception as e:  # noqa: BLE001
         flash(f"Error: {e}", "error")
         return render_template("block_contents_compare.html", result=None)
+
+
+# Documentation routes
+@app.route("/docs")
+@app.route("/docs/<page>")
+def docs(page: str | None = None):
+    """Serve static 'Coming soon' docs pages from static/docs_html"""
+    filename = "index.html" if not page else f"{page}.html"
+    try:
+        return send_from_directory("static/docs_html", filename)
+    except Exception:
+        return send_from_directory("static/docs_html", "index.html")
+
+@app.route("/guide")
+def guide():
+    """GitBook-like SPA docs served statically"""
+    return send_from_directory("static/guide", "index.html")
 
 @app.route("/api/block-data", methods=["POST"])
 @login_required

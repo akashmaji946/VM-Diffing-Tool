@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VM Diffing Tool · Documentation</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+  <style>
+    :root { --border: #444; }
+    body { margin: 0; }
+    main { padding: 0.9rem; }
+    /* Box */
+    .gb-wrap {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 0;
+      min-height: calc(100vh - 3rem);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      margin: 1rem auto;
+      width: min(1200px, calc(100% - 2rem));
+      background: var(--pico-card-background-color);
+    }
+    .gb-sidebar { background: var(--pico-card-background-color); border-right: 1px solid var(--border); padding: 0.75rem; }
+    .gb-sidebar .search { width: 100%; margin-bottom: 0.5rem; font-size: 0.82rem; }
+    .gb-sidebar a { display: block; padding: 0.35rem 0.55rem; border-radius: 6px; text-decoration: none; color: var(--pico-primary); font-size: 0.82rem; }
+    .gb-sidebar a.active { background: rgba(127,127,127,0.12); font-weight: 200; }
+    .gb-content { padding: 1rem 1.25rem; }
+    .gb-content .markdown-body { max-width: 960px; font-size: 0.68rem; line-height: 1.5; }
+    /* Smaller headings for denser docs */
+    .markdown-body h1 { font-size: 0.76rem; margin: 0.6rem 0 0.4rem; }
+    .markdown-body h2 { font-size: 0.7rem; margin: 0.55rem 0 0.35rem; }
+    .markdown-body h3 { font-size: 0.62rem; margin: 0.5rem 0 0.3rem; }
+    .markdown-body h4 { font-size: 0.58rem; margin: 0.45rem 0 0.28rem; }
+    .markdown-body h5 { font-size: 0.54rem; margin: 0.4rem 0 0.25rem; }
+    .markdown-body h6 { font-size: 0.5rem;  margin: 0.35rem 0 0.22rem; }
+    .markdown-body p  { margin: 0.45rem 0; }
+    .markdown-body ul, .markdown-body ol { margin: 0.4rem 0 0.4rem 1rem; }
+    .markdown-body table { font-size: 0.9em; }
+    .markdown-body blockquote { font-size: 0.9em; margin: 0.5rem 0; }
+    .markdown-body pre { background: rgba(127,127,127,0.12); padding: 0.4rem; border-radius: 6px; overflow: auto; font-size: 0.66rem; }
+    .markdown-body pre code { font-size: inherit; }
+    .markdown-body code { background: rgba(127,127,127,0.12); padding: 0.05rem 0.18rem; border-radius: 4px; font-size: 0.68rem; }
+    header h2 { text-align: center; margin: 0.5rem 0 0.25rem; }
+    header p { text-align: center; color: #888; margin: 0 0 1rem; }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h2>Documentation</h2>
+      <p>GitBook-style documentation with a sidebar and Markdown pages.</p>
+    </header>
+
+    <div class="gb-wrap" id="gb">
+      <aside class="gb-sidebar">
+        <input id="gbSearch" class="search" type="search" placeholder="Search sections..." />
+        <nav id="gbNav"></nav>
+      </aside>
+      <section class="gb-content">
+        <article class="markdown-body" id="gbDoc">Loading...</article>
+      </section>
+    </div>
+  </main>
+
+  <!-- Marked.js for Markdown rendering -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script>
+    const PAGES = [
+      { id: 'introduction', title: 'Introduction', file: '/static/docs/introduction.md' },
+      { id: 'getting-started', title: 'Getting Started', file: '/static/docs/getting-started.md' },
+      { id: 'features', title: 'Features', file: '/static/docs/features.md' },
+      { id: 'endpoints', title: 'GUI Endpoints', file: '/static/docs/endpoints.md' },
+      { id: 'api', title: 'CLI API', file: '/static/docs/api.md' },
+      { id: 'deployment', title: 'Deployment', file: '/static/docs/deployment.md' },
+      { id: 'docker', title: 'Docker', file: '/static/docs/docker.md' },
+      { id: 'faq', title: 'FAQ', file: '/static/docs/faq.md' },
+      { id: 'changelog', title: 'Changelog', file: '/static/docs/changelog.md' }
+    ];
+
+    function buildNav(){
+      const nav = document.getElementById('gbNav');
+      nav.innerHTML = '';
+      PAGES.forEach(p=>{
+        const a = document.createElement('a');
+        a.href = `#/` + p.id;
+        a.textContent = p.title;
+        a.dataset.id = p.id;
+        nav.appendChild(a);
+      });
+    }
+
+    async function loadPage(id){
+      const page = PAGES.find(p=>p.id===id) || PAGES[0];
+      document.querySelectorAll('#gbNav a').forEach(a=> a.classList.toggle('active', a.dataset.id===page.id));
+      try {
+        const res = await fetch(page.file, {cache:'no-cache'});
+        const md = await res.text();
+        marked.setOptions({ mangle:false, headerIds:false });
+        document.getElementById('gbDoc').innerHTML = marked.parse(md);
+      } catch (e) {
+        document.getElementById('gbDoc').innerHTML = '<p style="color:#e33;">Failed to load page.</p>';
+      }
+    }
+
+    function navigate(){
+      const hash = location.hash.replace('#/','');
+      const id = hash || 'introduction';
+      loadPage(id);
+    }
+
+    // Simple client-side filter for sidebar
+    document.addEventListener('DOMContentLoaded', ()=>{
+      const input = document.getElementById('gbSearch');
+      input.addEventListener('input', (e)=>{
+        const q = e.target.value.toLowerCase();
+        document.querySelectorAll('#gbNav a').forEach(a=>{
+          const show = a.textContent.toLowerCase().includes(q);
+          a.style.display = show ? 'block' : 'none';
+        });
+      });
+    });
+
+    window.addEventListener('hashchange', navigate);
+
+    buildNav();
+    navigate();
+  </script>
+</body>
+</html>
