@@ -66,6 +66,7 @@ releases/
 # Documentation
 *.md
 !README.md
+!docker/*.md
 STEPS.md
 
 # Test files

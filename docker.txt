@@ -1,0 +1,49 @@
+########### WAY 1 ##########
+
+# Navigate to docker directory
+cd docker
+
+# Build and start the container
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+
+# Stop the container
+docker-compose down
+
+# Stop and remove volumes
+docker-compose down -v
+
+########### WAY 2 ##########
+
+# You are in the root directory of the project
+
+# build the image
+docker build -t vmtool:latest -f docker/Dockerfile .
+
+# run the container
+docker run -d \
+  --name VMT-Docker \
+  --privileged \
+  --device /dev/kvm:/dev/kvm \
+  -p 8000:8000 \
+  -v $HOME:$HOME:ro \
+  -v $(pwd)/frontend/server/database:/app/frontend/server/database \
+  -v $(pwd)/frontend/server/.env:/app/frontend/server/.env:ro \
+  vmtool:latest
+
+# View logs
+docker logs VMT-Docker -f
+
+# Access the container
+docker exec -it VMT-Docker /bin/bash
+
+# Stop the container
+docker stop VMT-Docker
+
+# Remove the container
+docker rm VMT-Docker
+
+# Remove the image
+docker rmi vmtool:latest

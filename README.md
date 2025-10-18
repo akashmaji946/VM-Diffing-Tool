@@ -53,39 +53,28 @@ VM-Diffing-Tool/
 
 ## 🚀 Installation
 
-### Docker Installation
+### Docker Installation (Recommended)
 
-Refer to [DOCKER.md](DOCKER.md) for Docker installation instructions.
+Refer to [docker/DOCKER.md](docker/DOCKER.md) for detailed Docker installation instructions.
 
-
-Build and run the container:
+**Quick Start:**
 ```bash
-# Build the image
-docker build -t vmtool:latest .
+# Navigate to docker directory
+cd docker
 
-# Run the container
-docker run -d \
-  --name VMT-Docker \
-  --privileged \
-  --device /dev/kvm:/dev/kvm \
-  -p 8000:8000 \
-  -v $HOME:$HOME:ro \
-  -v $(pwd)/frontend/server/database:/app/frontend/server/database \
-  -v $(pwd)/frontend/server/.env:/app/frontend/server/.env:ro \
-  vmtool:latest
-```
-
-Or use docker compose:
-```bash
 # Build and start the container
 docker-compose up -d
 
 # View logs
-docker-compose logs -f
+docker logs VMT-Docker -f
 
 # Stop the container
 docker-compose down
 ```
+
+The application will be available at `http://localhost:8000`
+
+For manual Docker build or advanced configuration, see [docker/DOCKER.md](docker/DOCKER.md) and [docker/MOUNTING_VM_IMAGES.md](docker/MOUNTING_VM_IMAGES.md).
 
 ### Prerequisites
 

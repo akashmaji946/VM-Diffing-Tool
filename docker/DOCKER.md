@@ -21,11 +21,10 @@ The Docker setup uses a multi-stage build process:
 
 ### 1. Configure Environment Variables
 
-Create a `.env` file in `frontend/server/`:
+From the project root, create a `.env` file in `frontend/server/`:
 
 ```bash
-cd frontend/server
-cp .env.sample .env
+cp frontend/server/.env.sample frontend/server/.env
 ```
 
 Edit `.env` with your configuration:
@@ -52,11 +51,14 @@ python3 -c "import secrets; print(secrets.token_hex(32))"
 ### 2. Build and Run with Docker Compose
 
 ```bash
+# Navigate to docker directory
+cd docker
+
 # Build and start the container
 docker-compose up -d
 
 # View logs
-docker-compose logs -f
+docker logs VMT-Docker -f
 
 # Stop the container
 docker-compose down
@@ -67,8 +69,9 @@ The application will be available at `http://localhost:8000`
 ### 3. Alternative: Build with Docker Only
 
 ```bash
+# From the project root directory
 # Build the image
-docker build -t vmtool:latest .
+docker build -t vmtool:latest -f docker/Dockerfile .
 
 # Run the container
 docker run -d \
@@ -111,15 +114,16 @@ The container mounts your entire home directory (`$HOME`) to the same path insid
 For faster rebuilds during development, you can build the base image separately:
 
 ```bash
+# From the project root directory
 # Build base image with all dependencies
-docker build -f Dockerfile.base -t vmtool-base:latest .
+docker build -f docker/Dockerfile.base -t vmtool-base:latest .
 
-# Modify Dockerfile to use the base image
+# Modify docker/Dockerfile to use the base image
 # Change: FROM ubuntu:22.04 AS base
 # To:     FROM vmtool-base:latest AS base
 
 # Build the application
-docker build -t vmtool:latest .
+docker build -f docker/Dockerfile -t vmtool:latest .
 ```
 
 ## 🐛 Troubleshooting
@@ -178,6 +182,9 @@ chmod -R 755 frontend/server/database
 # Pull latest code
 git pull
 
+# Navigate to docker directory
+cd docker
+
 # Rebuild and restart
 docker-compose down
 docker-compose up -d --build
@@ -211,6 +218,9 @@ For issues related to Docker deployment:
 ## 🚀 Quick Reference
 
 ```bash
+# Navigate to docker directory first
+cd docker
+
 # Start the container
 docker-compose up -d
 
