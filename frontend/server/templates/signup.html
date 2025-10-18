@@ -1,9 +1,9 @@
 {% extends 'base.html' %}
 {% block title %}Sign Up{% endblock %}
 {% block content %}
-<div style="max-width: 450px; margin: 3rem auto;">
-  <h2>Create Account</h2>
-  <p style="color: #888; margin-bottom: 2rem;">Sign up to access VM Tool Server.</p>
+<div style="max-width: 450px; margin: 1rem auto;">
+  <h2 style="margin-bottom: 0.5rem;">Create Account</h2>
+  <p style="color: #888; margin-bottom: 1rem; font-size: 0.9rem;">Sign up to access VM Tool Server.</p>
 
   <form method="POST">
     <fieldset>
@@ -31,7 +31,7 @@
     </fieldset>
   </form>
 
-  <p style="text-align: center; margin-top: 1.5rem;">
+  <p style="text-align: center; margin-top: 1rem; font-size: 0.9rem;">
     Already have an account? <a href="{{ url_for('login') }}">Login here</a>
   </p>
 </div>

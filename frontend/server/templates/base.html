@@ -95,6 +95,90 @@
     /* Tables compactness */
     table { font-size: 0.9rem; }
     table td, table th { padding: 0.35rem 0.5rem; }
+
+    /* Navigation button styling */
+    nav ul li a[href="/login"],
+    nav ul li a[href="/signup"],
+    nav ul li a[href="/logout"] {
+      background: linear-gradient(135deg, #4a9fd8 0%, #5db3e8 100%);
+      color: #fff !important;
+      padding: 0.5rem 1.2rem;
+      border-radius: 6px;
+      font-weight: 500;
+      transition: all 0.2s ease;
+      box-shadow: 0 2px 8px rgba(74, 159, 216, 0.3);
+      margin-left: 0.5rem;
+    }
+    nav ul li a[href="/login"]:hover,
+    nav ul li a[href="/signup"]:hover,
+    nav ul li a[href="/logout"]:hover {
+      background: linear-gradient(135deg, #5db3e8 0%, #4a9fd8 100%);
+      box-shadow: 0 4px 12px rgba(74, 159, 216, 0.4);
+      transform: translateY(-1px);
+    }
+
+    /* Flash messages styling */
+    .flash-messages {
+      position: fixed;
+      top: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10000;
+      max-width: 450px;
+      min-width: 350px;
+    }
+    .flash-alert {
+      background: #2d7a4a;
+      color: #fff;
+      padding: 0.9rem 1.2rem;
+      border-radius: 8px;
+      margin-bottom: 0.75rem;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      font-size: 1rem;
+      animation: fadeIn 0.3s ease-out;
+    }
+    .flash-alert.error {
+      background: #a83232;
+    }
+    .flash-alert.warning {
+      background: #b8941f;
+    }
+    .flash-alert.info {
+      background: #2d6ba8;
+    }
+    .flash-close {
+      background: none;
+      border: none;
+      color: #fff;
+      font-size: 1.5rem;
+      cursor: pointer;
+      padding: 0;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+      transition: background 0.2s;
+      flex-shrink: 0;
+    }
+    .flash-close:hover {
+      background: rgba(255,255,255,0.2);
+    }
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: scale(0.9);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
   </style>
 </head>
 <body>
@@ -137,15 +221,21 @@
     </ul>
   </nav>
 
-  <main class="container">
+  <!-- Flash messages container -->
+  <div class="flash-messages" id="flashMessages">
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
         {% for category, message in messages %}
-          <article class="{{ 'secondary' if category=='error' else 'primary' }}">{{ message }}</article>
+          <div class="flash-alert {{ category }}" role="alert">
+            <span>{{ message }}</span>
+            <button class="flash-close" onclick="this.parentElement.remove()" aria-label="Close">&times;</button>
+          </div>
         {% endfor %}
       {% endif %}
     {% endwith %}
+  </div>
 
+  <main class="container">
     {% block content %}{% endblock %}
   </main>
   <!-- jQuery + DataTables (core) -->

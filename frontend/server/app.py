@@ -55,6 +55,18 @@ def load_user(user_id: int) -> User | None:
 with app.app_context():
     db.create_all()
 
+# Print banner on server start
+print("""
+'##::::'##:'##::::'##:'########::'#######:::'#######::'##:::::::
+ ##:::: ##: ###::'###:... ##..::'##.... ##:'##.... ##: ##:::::::
+ ##:::: ##: ####'####:::: ##:::: ##:::: ##: ##:::: ##: ##:::::::
+ ##:::: ##: ## ### ##:::: ##:::: ##:::: ##: ##:::: ##: ##:::::::
+. ##:: ##:: ##. #: ##:::: ##:::: ##:::: ##: ##:::: ##: ##:::::::
+:. ## ##::: ##:.:: ##:::: ##:::: ##:::: ##: ##:::: ##: ##:::::::
+::. ###:::: ##:::: ##:::: ##::::. #######::. #######:: ########:
+:::...:::::..:::::..:::::..::::::.......::::.......:::........::
+""")
+
 
 @app.route("/")
 @login_required
@@ -145,9 +157,11 @@ def signup() -> str | Response:
     user = User(username=username, email=email)
     user.set_password(password)
     
-    # If email verification is not required, verify immediately
-    if not app.config['EMAIL_VERIFICATION_REQUIRED']:
-        user.is_verified = True
+    # Explicitly set verification status based on config
+    if app.config.get('EMAIL_VERIFICATION_REQUIRED', True):
+        user.is_verified = False  # Require email verification
+    else:
+        user.is_verified = True  # Auto-verify if verification not required
     
     db.session.add(user)
     db.session.commit()
@@ -163,6 +177,23 @@ def signup() -> str | Response:
         flash("Account created successfully! You can now log in.", "success")
     
     return redirect(url_for("login"))
+
+
+@app.route("/signup-success")
+def signup_success() -> str:
+    """Display signup success page."""
+    username = request.args.get("username", "")
+    email = request.args.get("email", "")
+    password = request.args.get("password", "")
+    base_url = app.config.get('BASE_URL', 'http://127.0.0.1:8000')
+    
+    return render_template(
+        "signup_success.html",
+        username=username,
+        email=email,
+        password=password,
+        base_url=base_url
+    )
 
 
 @app.route("/logout")
@@ -193,8 +224,9 @@ def verify_email(token: str) -> Response:
     user.is_verified = True
     db.session.commit()
     
-    flash("Email verified successfully! You can now log in.", "success")
-    return redirect(url_for("login"))
+    # Redirect to signup success page with user details
+    # Note: Password is hashed in DB, so we can't show the original password
+    return redirect(url_for("signup_success", username=user.username, email=user.email, password="[Your chosen password]"))
 
 
 def send_verification_email(user: User) -> None:
@@ -220,7 +252,7 @@ This link will expire in 1 hour.
 If you did not create this account, please ignore this email.
 
 Best regards,
-VM Tool Server Team
+VMTool Server Team
 '''
     
     # Check authentication method
