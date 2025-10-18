@@ -40,7 +40,8 @@ VM-Diffing-Tool/
 │   │   └── VMTool.hpp   # Header files
 │   └── pybind11/        # Python bindings submodule
 │   └── main.cpp        
-├── frontend/   
+├── frontend/
+|   ├── vmt/             # CLI tool
 │   ├── server/          # Flask web application
 │   │   ├── app.py       # Main Flask application
 │   │   ├── models.py    # Database models
@@ -162,6 +163,107 @@ The server will start on `http://localhost:8000`
 4. **Export Results**:
    - Use "Export as PDF" or "Export as JSON" buttons
    - Save comparison reports for documentation
+
+## 🛠️ CLI (vmt) Setup and Usage
+
+The project ships a command-line tool named `vmt` for running VM inspection utilities from the terminal. The CLI dynamically discovers commands from `frontend/vmtool_scripts/` and executes them.
+
+### Install the CLI (development/editable mode)
+
+```bash
+# Create and activate a virtual environment (recommended)
+python3 -m venv .vm
+source .vm/bin/activate
+
+# Install Python dependencies at repo root
+pip install -r requirements.txt
+
+# Install the vmt CLI (editable)
+cd frontend
+pip install -e .
+```
+
+Editable install means any changes you make to `frontend/vmt/vmt.py` take effect immediately.
+
+### Verify installation
+
+```bash
+which vmt       # should show the vmt entry point in your venv
+vmt -h          # global help
+vmt -v          # version
+vmt list        # list all available commands detected from vmtool_scripts
+```
+
+If `vmt list` shows no commands, ensure the directory exists: `frontend/vmtool_scripts/`.
+
+### How command discovery works
+
+- `vmt` discovers scripts matching the pattern `vmtool_*.py` inside `frontend/vmtool_scripts/`.
+- It exposes them as commands by stripping the `vmtool_` prefix. For example:
+  - `vmtool_check_file_exists_in_disk.py` → `check_file_exists_in_disk`
+  - `vmtool_get_disk_meta_data.py` → `get_disk_meta_data`
+  - `vmtool_get_all_files_in_disk_json.py` → `get_all_files_in_disk_json`
+  - `vmtool_get_file_contents_in_disk.py` → `get_file_contents_in_disk`
+  - `vmtool_get_file_contents_in_disk_format.py` → `get_file_contents_in_disk_format`
+  - `vmtool_list_all_filenames_in_disk.py` → `list_all_filenames_in_disk`
+  - `vmtool_list_all_files_in_disk.py` → `list_all_files_in_disk`
+  - `vmtool_list_files_in_directory_in_disk.py` → `list_files_in_directory_in_disk`
+
+### Global usage
+
+```bash
+vmt -h | --help     # Print global help and list available commands
+vmt -v | --version  # Print version
+vmt list            # List all discovered commands
+vmt -c <command>    # Run a specific command; append -h for command help
+```
+
+### Examples
+
+```bash
+# Check if a file exists inside a guest
+vmt -c check_file_exists_in_disk \
+  --disk /path/to/disk.qcow2 \
+  --name /etc/hosts
+
+# Get aggregated disk metadata (JSON)
+vmt -c get_disk_meta_data \
+  --disk /path/to/disk.qcow2 \
+  --json $PWD/meta.json
+
+# Dump a guest file
+vmt -c get_file_contents_in_disk \
+  --disk /path/to/disk.qcow2 \
+  --name /etc/hosts
+
+# Dump a guest file in hex format
+vmt -c get_file_contents_in_disk_format \
+  --disk /path/to/disk.qcow2 \
+  --name /bin/bash \
+  --format hex \
+  --out $PWD/output.txt
+
+# List all file names and save to JSON
+vmt -c list_all_filenames_in_disk \
+  --disk /path/to/disk.qcow2 \
+  --json $PWD/output.json
+
+# List files of a guest directory
+vmt -c list_files_in_directory_in_disk \
+  --disk /path/to/disk.qcow2 \
+  --directory /etc \
+  --detailed
+```
+
+### Notes on permissions
+
+Many operations require elevated privileges for libguestfs access. `vmt` runs the underlying scripts using `sudo python3 …`. If prompted, provide your sudo password.
+
+### Portability notes
+
+This CLI discovers scripts from the repository layout (`frontend/vmtool_scripts/`) when installed in editable mode. If you plan to distribute the CLI without the repo, include those scripts alongside the install or package them inside the wheel.
+
+---
 
 ## 🔧 API Endpoints
 
