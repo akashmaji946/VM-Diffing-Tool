@@ -13,7 +13,6 @@ PyQt6_sip
 PySide6
 PySide6_Addons
 PySide6_Essentials
-pyspark
 requests
 shiboken6
 urllib3

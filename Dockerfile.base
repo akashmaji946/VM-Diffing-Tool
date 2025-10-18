@@ -1,0 +1,44 @@
+# Base image with all C++ and Python dependencies for VM-Diffing-Tool
+FROM ubuntu:22.04
+
+# Prevent interactive prompts during package installation
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    # Build tools
+    build-essential \
+    cmake \
+    g++ \
+    git \
+    # Python dependencies
+    python3.10 \
+    python3.10-dev \
+    python3-pip \
+    # libguestfs and dependencies
+    libguestfs-dev \
+    libguestfs-tools \
+    python3-guestfs \
+    libguestfs0 \
+    qemu-utils \
+    # Additional utilities
+    sqlite3 \
+    libsqlite3-dev \
+    # Cleanup
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Upgrade pip
+RUN python3 -m pip install --upgrade pip setuptools wheel
+
+# Set Python 3.10 as default
+RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.10 1 && \
+    update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.10 1
+
+# Set working directory
+WORKDIR /app
+
+# Label the image
+LABEL maintainer="akashmaji@iisc.ac.in"
+LABEL description="Base image with C++ and Python dependencies for VM-Diffing-Tool"
+LABEL version="1.0"

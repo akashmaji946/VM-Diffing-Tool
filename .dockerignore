@@ -1,0 +1,92 @@
+# Git files
+.git
+.gitignore
+.gitmodules
+.gitattributes
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+*.whl
+.Python
+
+# Virtual environments
+.vm/
+venv/
+env/
+ENV/
+.venv
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+*.code-workspace
+
+# Build artifacts
+backend/build/
+backend/CMakeFiles/
+backend/CMakeCache.txt
+backend/cmake_install.cmake
+backend/Makefile
+*.o
+*.a
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+database/
+frontend/server/database/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+.zips/
+releases/
+
+# Documentation
+*.md
+!README.md
+STEPS.md
+
+# Test files
+*_test.py
+test_*.py
+tests/
+demo_tests/
+
+# Images (unless needed)
+images/
+*.png
+*.jpg
+*.jpeg
+*.gif
+
+# Uploaded files
+uploads/
+frontend/server/uploads/
+
+# Node modules (if any)
+node_modules/
+
+# OS files
+Thumbs.db

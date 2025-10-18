@@ -680,21 +680,21 @@ def directory_diff() -> str | Response:
         cache_file2 = cache_dir / f"dir_diff_{cache_key2}.json"
 
         # Get file lists from both directories (use cache or fetch fresh)
-        if cache_file1.exists():
-            with open(cache_file1, 'r') as f:
-                files1_dict = json.load(f)
-        else:
-            files1_dict = vmtool.list_all_filenames_in_directory(disk1, dir1)
-            with open(cache_file1, 'w') as f:
-                json.dump(files1_dict, f, indent=2)
+        # if cache_file1.exists():
+        #     with open(cache_file1, 'r') as f:
+        #         files1_dict = json.load(f)
+        # else:
+        files1_dict = vmtool.list_all_filenames_in_directory(disk1, dir1)
+        with open(cache_file1, 'w') as f:
+            json.dump(files1_dict, f, indent=2)
 
-        if cache_file2.exists():
-            with open(cache_file2, 'r') as f:
-                files2_dict = json.load(f)
-        else:
-            files2_dict = vmtool.list_all_filenames_in_directory(disk2, dir2)
-            with open(cache_file2, 'w') as f:
-                json.dump(files2_dict, f, indent=2)
+        # if cache_file2.exists():
+        #     with open(cache_file2, 'r') as f:
+        #         files2_dict = json.load(f)
+        # else:
+        files2_dict = vmtool.list_all_filenames_in_directory(disk2, dir2)
+        with open(cache_file2, 'w') as f:
+            json.dump(files2_dict, f, indent=2)
 
         # Extract just the file paths (values) and sort them
         files1_set = set(files1_dict.values())

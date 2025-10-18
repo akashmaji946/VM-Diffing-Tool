@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  vmtool-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: VMT-Docker
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount VM disk images directory (adjust path as needed)
+      # Example: - /home/user/vms:/vm-images:ro
+      # Example: - /var/lib/libvirt/images:/vm-images:ro
+      - $HOME:$HOME:ro
+      # Persist database
+      - ./frontend/server/database:/app/frontend/server/database
+      # Mount .env file for configuration
+      - ./frontend/server/.env:/app/frontend/server/.env:ro
+    environment:
+      - PYTHONUNBUFFERED=1
+    # Required for libguestfs to access disk images
+    privileged: true
+    devices:
+      - /dev/kvm:/dev/kvm
+    restart: unless-stopped
+    networks:
+      - vmtool-network
+
+  # Optional: Build base image separately for faster rebuilds
+  # Uncomment to use pre-built base image
+  # vmtool-app:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #     args:
+  #       BASE_IMAGE: vmtool-base:latest
+  #   ...
+
+networks:
+  vmtool-network:
+    driver: bridge
+
+volumes:
+  vmtool-db:
+    driver: local
