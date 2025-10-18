@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% block title %}Sign Up{% endblock %}
+{% block content %}
+<div style="max-width: 450px; margin: 3rem auto;">
+  <h2>Create Account</h2>
+  <p style="color: #888; margin-bottom: 2rem;">Sign up to access VM Tool Server.</p>
+
+  <form method="POST">
+    <fieldset>
+      <label for="username">
+        Username
+        <input type="text" id="username" name="username" placeholder="Choose a username" required autofocus />
+      </label>
+      
+      <label for="email">
+        Email
+        <input type="email" id="email" name="email" placeholder="Enter your email" required />
+      </label>
+      
+      <label for="password">
+        Password
+        <input type="password" id="password" name="password" placeholder="Choose a password (min 8 characters)" required minlength="8" />
+      </label>
+      
+      <label for="confirm_password">
+        Confirm Password
+        <input type="password" id="confirm_password" name="confirm_password" placeholder="Confirm your password" required minlength="8" />
+      </label>
+      
+      <button type="submit">Sign Up</button>
+    </fieldset>
+  </form>
+
+  <p style="text-align: center; margin-top: 1.5rem;">
+    Already have an account? <a href="{{ url_for('login') }}">Login here</a>
+  </p>
+</div>
+
+<script>
+  // Client-side password confirmation validation
+  document.querySelector('form').addEventListener('submit', function(e) {
+    const password = document.getElementById('password').value;
+    const confirmPassword = document.getElementById('confirm_password').value;
+    
+    if (password !== confirmPassword) {
+      e.preventDefault();
+      alert('Passwords do not match!');
+      return false;
+    }
+  });
+</script>
+{% endblock %}

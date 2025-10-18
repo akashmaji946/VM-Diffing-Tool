@@ -110,6 +110,7 @@
       <li><strong>VM Tool Server</strong></li>
     </ul>
     <ul>
+      {% if current_user.is_authenticated %}
       <li><a href="/">Home</a></li>
       <li><a href="/list-files">List Files</a></li>
       <li><a href="/files-json">Files JSON</a></li>
@@ -118,6 +119,16 @@
       <li><a href="/file-contents-format">Contents Format</a></li>
       <li><a href="/check-exists">Check Exists</a></li>
       <li><a href="/file-compare">File Compare</a></li>
+      <li><a href="/files-diff">Difference in Files</a></li>
+      <li><a href="/directory-diff">Compare Files In Directory</a></li>
+      <li style="margin-left: auto;">
+        <span style="color: #888; font-size: 0.9rem;">👤 {{ current_user.username }}</span>
+      </li>
+      <li><a href="/logout">Logout</a></li>
+      {% else %}
+      <li><a href="/login">Login</a></li>
+      <li><a href="/signup">Sign Up</a></li>
+      {% endif %}
       <li>
         <button id="themeToggle" class="outline" style="padding: 0.4rem 0.8rem; margin: 0;" aria-label="Toggle theme">
           <span id="themeIcon">🌙</span>
@@ -219,6 +230,11 @@
       }, true);
 
       // Ensure loader is hidden after render
+      if (window.VMTS) window.VMTS.hide();
+    });
+
+    // Hide loader on pageshow (handles back/forward cache)
+    window.addEventListener('pageshow', function(event){
       if (window.VMTS) window.VMTS.hide();
     });
   </script>

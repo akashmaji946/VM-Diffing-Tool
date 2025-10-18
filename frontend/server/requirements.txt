@@ -1,6 +1,11 @@
-Flask==3.0.3
+# Flask==3.0.3
 Werkzeug>=3.0.0
 Jinja2>=3.1.0
 itsdangerous>=2.1.0
 click>=8.1.0
+Flask-Login==0.6.3
+Flask-SQLAlchemy==3.1.1
+Flask-Mail==0.9.1
+email-validator==2.1.0
+python-dotenv==1.0.0
 # vmtool is a local pybind11 extension installed in your environment

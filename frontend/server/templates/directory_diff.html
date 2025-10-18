@@ -1,0 +1,310 @@
+{% extends "base.html" %}
+
+{% block title %}Compare Files In Directory{% endblock %}
+
+{% block content %}
+<h2>Compare Files In Directory</h2>
+<p>Compare file lists between two directories in VM disk images and view the differences.</p>
+
+<style>
+  /* AG Grid styling adjustments for both themes */
+  .ag-theme-alpine,
+  .ag-theme-alpine-dark {
+    --ag-font-size: 13px;
+    --ag-font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  }
+  #agGrid {
+    height: 600px;
+    width: 100%;
+  }
+  .filter-buttons {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+  }
+  .filter-buttons button {
+    flex: 0 0 auto;
+  }
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  .stats-grid article {
+    margin: 0;
+    padding: 1rem;
+  }
+  .stats-grid h4 {
+    margin: 0 0 0.5rem 0;
+    font-size: 0.9rem;
+  }
+  .stats-grid p {
+    font-size: 1.8rem;
+    font-weight: bold;
+    margin: 0;
+  }
+</style>
+
+<form method="POST">
+  <fieldset>
+    <legend>Disk Images and Directories</legend>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+      <div>
+        <label for="disk_path_1">
+          Disk 1 Path
+          <input type="text" id="disk_path_1" name="disk_path_1" placeholder="/path/to/disk1.qcow2" required {% if result %}value="{{ result.disk1 }}"{% endif %} />
+        </label>
+        <label for="directory_1">
+          Directory 1 Path
+          <input type="text" id="directory_1" name="directory_1" placeholder="/home/user" required {% if result %}value="{{ result.dir1 }}"{% endif %} />
+        </label>
+      </div>
+      <div>
+        <label for="disk_path_2">
+          Disk 2 Path
+          <input type="text" id="disk_path_2" name="disk_path_2" placeholder="/path/to/disk2.qcow2" required {% if result %}value="{{ result.disk2 }}"{% endif %} />
+        </label>
+        <label for="directory_2">
+          Directory 2 Path
+          <input type="text" id="directory_2" name="directory_2" placeholder="/home/user" required {% if result %}value="{{ result.dir2 }}"{% endif %} />
+        </label>
+      </div>
+    </div>
+    <button type="submit">Compare Directories</button>
+  </fieldset>
+</form>
+
+{% if result %}
+<hr />
+
+<h3>Comparison Statistics</h3>
+{% if result.cache_file1 and result.cache_file2 %}
+  <p style="font-size: 0.85rem; color: #888;">
+    <em>Data cached at: {{ result.cache_file1 }} and {{ result.cache_file2 }}</em>
+  </p>
+{% endif %}
+
+<div class="stats-grid">
+  <article>
+    <h4>Total Files (Dir1)</h4>
+    <p>{{ result.total_files1 }}</p>
+  </article>
+  <article>
+    <h4>Total Files (Dir2)</h4>
+    <p>{{ result.total_files2 }}</p>
+  </article>
+  <article>
+    <h4>Common Files</h4>
+    <p style="color: #28a745;">{{ result.common_files }}</p>
+  </article>
+  <article>
+    <h4>Only in Dir1</h4>
+    <p style="color: #dc3545;">{{ result.only_in_dir1 }}</p>
+  </article>
+  <article>
+    <h4>Only in Dir2</h4>
+    <p style="color: #ffc107;">{{ result.only_in_dir2 }}</p>
+  </article>
+</div>
+
+<h3>Side-by-Side Comparison</h3>
+<div style="border: 1px solid #444; border-radius: 4px; overflow: hidden; margin-bottom: 2rem;">
+  <div style="max-height: 500px; overflow-y: auto;">
+    <table style="width: 100%; font-size: 0.85rem; font-family: monospace; border-collapse: collapse;">
+      <thead style="position: sticky; top: 0; background: var(--pico-card-background-color); z-index: 10;">
+        <tr>
+          <th style="padding: 0.5rem; border: 1px solid #444; width: 50%; text-align: left;">Dir1: {{ result.disk1 }}:{{ result.dir1 }}</th>
+          <th style="padding: 0.5rem; border: 1px solid #444; width: 50%; text-align: left;">Dir2: {{ result.disk2 }}:{{ result.dir2 }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in result.diff_rows %}
+        <tr>
+          <td style="padding: 0.25rem 0.5rem; border: 1px solid #444; word-wrap: break-word; word-break: break-all; {% if row.in_dir1 and not row.in_dir2 %}background-color: rgba(220, 53, 69, 0.15);{% elif row.in_dir1 and row.in_dir2 %}background-color: rgba(40, 167, 69, 0.05);{% else %}background-color: rgba(128, 128, 128, 0.1);{% endif %}">
+            {% if row.in_dir1 %}{{ row.filename }}{% else %}<em style="color: #888;">[not present]</em>{% endif %}
+          </td>
+          <td style="padding: 0.25rem 0.5rem; border: 1px solid #444; word-wrap: break-word; word-break: break-all; {% if row.in_dir2 and not row.in_dir1 %}background-color: rgba(255, 193, 7, 0.15);{% elif row.in_dir1 and row.in_dir2 %}background-color: rgba(40, 167, 69, 0.05);{% else %}background-color: rgba(128, 128, 128, 0.1);{% endif %}">
+            {% if row.in_dir2 %}{{ row.filename }}{% else %}<em style="color: #888;">[not present]</em>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<h3>File Comparison Table</h3>
+<div class="filter-buttons">
+  <button id="showAll" class="outline">Show All Files</button>
+  <button id="showDir1Only" class="outline">Show Only Dir1 Unique</button>
+  <button id="showDir2Only" class="outline">Show Only Dir2 Unique</button>
+  <button id="showCommon" class="outline">Show Common Files</button>
+  <button id="downloadJson" class="outline">📥 Download JSON</button>
+</div>
+
+<div id="agGrid" class="ag-theme-alpine"></div>
+
+<script>
+  (function(){
+    // Store data from server
+    const rawData = {{ result.data | tojson }};
+    let gridApi = null;
+    
+    function getThemeClass() {
+      const theme = document.documentElement.getAttribute('data-theme') || 'light';
+      return theme === 'dark' ? 'ag-theme-alpine-dark' : 'ag-theme-alpine';
+    }
+
+    function updateGridTheme() {
+      const gridDiv = document.querySelector('#agGrid');
+      if (!gridDiv) return;
+      
+      // Remove both theme classes
+      gridDiv.classList.remove('ag-theme-alpine', 'ag-theme-alpine-dark');
+      // Add the appropriate theme class
+      gridDiv.classList.add(getThemeClass());
+    }
+    
+    function initAGGrid() {
+      if (!window.agGrid) {
+        // Wait until AG Grid is loaded
+        return setTimeout(initAGGrid, 100);
+      }
+
+      // Column definitions
+      const columnDefs = [
+        {
+          field: 'status',
+          headerName: 'Status',
+          width: 150,
+          filter: 'agTextColumnFilter',
+          cellStyle: function(params) {
+            if (params.value === 'Only in Dir1') {
+              return { color: '#dc3545', fontWeight: 'bold' };
+            } else if (params.value === 'Only in Dir2') {
+              return { color: '#ffc107', fontWeight: 'bold' };
+            } else if (params.value === 'Common') {
+              return { color: '#28a745', fontWeight: 'bold' };
+            }
+            return null;
+          }
+        },
+        {
+          field: 'filename',
+          headerName: 'File Path',
+          flex: 1,
+          filter: 'agTextColumnFilter',
+          wrapText: true,
+          autoHeight: true
+        }
+      ];
+
+      // Grid options
+      const gridOptions = {
+        columnDefs: columnDefs,
+        rowData: rawData,
+        defaultColDef: {
+          sortable: true,
+          filter: true,
+          resizable: true,
+          floatingFilter: true
+        },
+        pagination: true,
+        paginationPageSize: 100,
+        paginationPageSizeSelector: [50, 100, 200, 500, 1000],
+        domLayout: 'normal'
+      };
+
+      // Set initial theme
+      updateGridTheme();
+
+      // Create the grid
+      const gridDiv = document.querySelector('#agGrid');
+      gridApi = agGrid.createGrid(gridDiv, gridOptions);
+
+      // Listen for theme changes
+      window.addEventListener('themechange', function() {
+        updateGridTheme();
+      });
+    }
+
+    // Filter functions
+    function showAll() {
+      if (gridApi) {
+        gridApi.setFilterModel(null);
+      }
+    }
+
+    function showDir1Only() {
+      if (gridApi) {
+        gridApi.setFilterModel({
+          status: {
+            filterType: 'text',
+            type: 'equals',
+            filter: 'Only in Dir1'
+          }
+        });
+      }
+    }
+
+    function showDir2Only() {
+      if (gridApi) {
+        gridApi.setFilterModel({
+          status: {
+            filterType: 'text',
+            type: 'equals',
+            filter: 'Only in Dir2'
+          }
+        });
+      }
+    }
+
+    function showCommon() {
+      if (gridApi) {
+        gridApi.setFilterModel({
+          status: {
+            filterType: 'text',
+            type: 'equals',
+            filter: 'Common'
+          }
+        });
+      }
+    }
+
+    // Download JSON function
+    function downloadJSON() {
+      const dataStr = JSON.stringify(rawData, null, 2);
+      const dataBlob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(dataBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'directory-diff-' + new Date().toISOString().slice(0,10) + '.json';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+
+    document.addEventListener('DOMContentLoaded', function(){
+      initAGGrid();
+      
+      // Attach button handlers
+      const showAllBtn = document.getElementById('showAll');
+      const showDir1Btn = document.getElementById('showDir1Only');
+      const showDir2Btn = document.getElementById('showDir2Only');
+      const showCommonBtn = document.getElementById('showCommon');
+      const downloadBtn = document.getElementById('downloadJson');
+      
+      if (showAllBtn) showAllBtn.addEventListener('click', showAll);
+      if (showDir1Btn) showDir1Btn.addEventListener('click', showDir1Only);
+      if (showDir2Btn) showDir2Btn.addEventListener('click', showDir2Only);
+      if (showCommonBtn) showCommonBtn.addEventListener('click', showCommon);
+      if (downloadBtn) downloadBtn.addEventListener('click', downloadJSON);
+    });
+  })();
+</script>
+
+{% endif %}
+{% endblock %}

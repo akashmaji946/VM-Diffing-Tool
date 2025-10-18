@@ -1,14 +1,93 @@
 {% extends 'base.html' %}
 {% block title %}Home{% endblock %}
 {% block content %}
-<h2>Welcome</h2>
-<p>Use the navigation bar to access different VM tool functions:</p>
-<ul>
-  <li>List files with metadata</li>
-  <li>Get files as JSON</li>
-  <li>Get disk meta data</li>
-  <li>Read file contents</li>
-  <li>Read file contents in a specific format</li>
-  <li>Check if a file exists</li>
-</ul>
+<h2>Welcome to VM Tool Server</h2>
+<p style="color: #888; margin-bottom: 2rem;">Use the options below to access different VM tool functions:</p>
+
+<style>
+  .feature-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    max-width: 1200px;
+  }
+  @media (max-width: 768px) {
+    .feature-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+  .feature-card {
+    padding: 1.5rem;
+    border: 1px solid #444;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    display: block;
+  }
+  .feature-card:hover {
+    border-color: #666;
+    transform: translateX(5px);
+    background: rgba(255, 255, 255, 0.02);
+  }
+  .feature-card h3 {
+    margin: 0 0 0.5rem 0;
+    color: var(--pico-primary);
+    font-size: 1.2rem;
+  }
+  .feature-card p {
+    margin: 0;
+    color: #ccc;
+    font-size: 0.95rem;
+  }
+  [data-theme="light"] .feature-card p {
+    color: #666;
+  }
+</style>
+
+<div class="feature-grid">
+  <a href="/list-files" class="feature-card">
+    <h3>📋 List Files</h3>
+    <p>List all files in a VM disk image with detailed metadata including size, permissions, and modification time</p>
+  </a>
+
+  <a href="/files-json" class="feature-card">
+    <h3>📄 Files JSON</h3>
+    <p>Get file listings as JSON format with numbered entries for easy programmatic access</p>
+  </a>
+
+  <a href="/meta" class="feature-card">
+    <h3>💾 Disk Meta Data</h3>
+    <p>View comprehensive disk metadata including file counts, total sizes, and per-user/group breakdowns</p>
+  </a>
+
+  <a href="/file-contents" class="feature-card">
+    <h3>📖 File Contents</h3>
+    <p>Read and display the contents of any file inside a VM disk image</p>
+  </a>
+
+  <a href="/file-contents-format" class="feature-card">
+    <h3>🔢 Contents Format</h3>
+    <p>Read file contents in specific formats (hex or binary) for low-level analysis</p>
+  </a>
+
+  <a href="/check-exists" class="feature-card">
+    <h3>🔍 Check File Exists</h3>
+    <p>Verify if a file exists in the guest image and get detailed file information</p>
+  </a>
+
+  <a href="/file-compare" class="feature-card">
+    <h3>⚖️ File Compare</h3>
+    <p>Compare the contents of two files side-by-side from different VM disk images</p>
+  </a>
+
+  <a href="/files-diff" class="feature-card">
+    <h3>🔄 Difference in Files</h3>
+    <p>Compare complete file lists between two VM disk images and identify unique and common files</p>
+  </a>
+
+  <a href="/directory-diff" class="feature-card">
+    <h3>📁 Compare Files In Directory</h3>
+    <p>Compare files within specific directories across two VM disk images with detailed diff view</p>
+  </a>
+</div>
 {% endblock %}

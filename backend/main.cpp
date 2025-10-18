@@ -77,4 +77,17 @@ PYBIND11_MODULE(vmtool, m) {
           py::arg("directory"),
           py::arg("detailed") = false,
           "List all files in a directory in the guest image.");    
+
+    m.def("list_all_filenames_in_disk",
+          &vmtool::list_all_filenames_in_disk,
+          py::arg("disk_path"),
+          py::arg("verbose") = false,
+          "List all files in the disk with serial numbers as keys. Returns dict with '1', '2', ... as keys and file paths as values, sorted alphabetically.");
+
+    m.def("list_all_filenames_in_directory",
+          &vmtool::list_all_filenames_in_directory,
+          py::arg("disk_path"),
+          py::arg("directory"),
+          py::arg("verbose") = false,
+          "List all files in a directory recursively with serial numbers as keys. Returns dict with '1', '2', ... as keys and file paths as values, sorted alphabetically.");
 }

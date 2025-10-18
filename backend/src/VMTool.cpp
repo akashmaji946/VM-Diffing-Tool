@@ -848,6 +848,189 @@ pybind11::dict list_files_in_directory_in_disk(const std::string& disk_path, con
     free_string_list(files);
     return out;
 }
-   
 
-} // namespace vmtool   
+pybind11::dict list_all_filenames_in_disk(const std::string& disk_path, bool verbose) {
+    guestfs_h *g = guestfs_create();
+    if (!g) {
+        throw std::runtime_error("Failed to create guestfs handle");
+    }
+
+    // Add drive read-only and launch
+    if (guestfs_add_drive_ro(g, disk_path.c_str()) == -1) {
+        guestfs_close(g);
+        throw std::runtime_error("guestfs_add_drive_ro failed");
+    }
+
+    if (guestfs_launch(g) == -1) {
+        guestfs_close(g);
+        throw std::runtime_error("guestfs_launch failed");
+    }
+
+    // Inspect OSes
+    char **roots = guestfs_inspect_os(g);
+    if (!roots || !roots[0]) {
+        if (roots) free_string_list(roots);
+        guestfs_shutdown(g);
+        guestfs_close(g);
+        throw std::runtime_error("No OS found in image");
+    }
+
+    // For each root, get mountpoints and mount read-only
+    for (size_t i = 0; roots[i] != nullptr; ++i) {
+        const char *root = roots[i];
+
+        // get mountpoints: returns [mountpoint, device, mountpoint, device, ..., NULL]
+        char **mpdev = guestfs_inspect_get_mountpoints(g, root);
+        if (!mpdev) continue;
+
+        struct MP { std::string mountpoint; std::string device; };
+        std::vector<MP> mps;
+        for (size_t j = 0; mpdev[j] && mpdev[j+1]; j += 2) {
+            mps.push_back(MP{mpdev[j], mpdev[j+1]});
+        }
+        free_string_list(mpdev);
+
+        std::sort(mps.begin(), mps.end(), [](const MP &a, const MP &b){
+            return a.mountpoint.size() < b.mountpoint.size();
+        });
+
+        for (const auto &p : mps) {
+            // Mount read-only
+            if (guestfs_mount_ro(g, p.device.c_str(), p.mountpoint.c_str()) == -1) {
+                // continue attempting other mounts
+                continue;
+            }
+        }
+    }
+
+    // Now find all paths
+    char **paths = guestfs_find(g, "/");
+    if (!paths) {
+        guestfs_umount_all(g);
+        guestfs_shutdown(g);
+        guestfs_close(g);
+        throw std::runtime_error("guestfs_find failed");
+    }
+
+    // Collect all file paths in a vector
+    std::vector<std::string> file_paths;
+    for (size_t k = 0; paths[k] != nullptr; ++k) {
+        std::string path_component = paths[k];
+        std::string full_path = (path_component == ".") ? std::string("/") : std::string("/") + path_component;
+        file_paths.push_back(full_path);
+    }
+
+    free_string_list(paths);
+    guestfs_umount_all(g);
+    guestfs_shutdown(g);
+    guestfs_close(g);
+
+    // Sort the file paths alphabetically
+    std::sort(file_paths.begin(), file_paths.end());
+
+    // Build dictionary with serial numbers as keys
+    pybind11::dict out;
+    for (size_t i = 0; i < file_paths.size(); ++i) {
+        std::string key = std::to_string(i + 1);
+        out[py::str(key)] = py::str(file_paths[i]);
+
+        if (verbose && (i % 5000 == 0)) {
+            py::print("Processed:", i + 1, "files");
+        }
+    }
+
+    return out;
+}
+
+pybind11::dict list_all_filenames_in_directory(const std::string& disk_path, const std::string& directory, bool verbose) {
+    guestfs_h *g = guestfs_create();
+    if (!g) {
+        throw std::runtime_error("Failed to create guestfs handle");
+    }
+
+    if (guestfs_add_drive_ro(g, disk_path.c_str()) == -1) {
+        guestfs_close(g);
+        throw std::runtime_error("guestfs_add_drive_ro failed");
+    }
+
+    if (guestfs_launch(g) == -1) {
+        guestfs_close(g);
+        throw std::runtime_error("guestfs_launch failed");
+    }
+
+    // Inspect and mount
+    char **roots = guestfs_inspect_os(g);
+    if (!roots || !roots[0]) {
+        if (roots) free_string_list(roots);
+        guestfs_shutdown(g);
+        guestfs_close(g);
+        throw std::runtime_error("No OS found in image");
+    }
+
+    for (size_t i = 0; roots[i] != nullptr; ++i) {
+        const char *root = roots[i];
+        char **mpdev = guestfs_inspect_get_mountpoints(g, root);
+        if (!mpdev) continue;
+        struct MP { std::string mountpoint; std::string device; };
+        std::vector<MP> mps;
+        for (size_t j = 0; mpdev[j] && mpdev[j+1]; j += 2) {
+            mps.push_back(MP{mpdev[j], mpdev[j+1]});
+        }
+        free_string_list(mpdev);
+        std::sort(mps.begin(), mps.end(), [](const MP &a, const MP &b){
+            return a.mountpoint.size() < b.mountpoint.size();
+        });
+        for (const auto &p : mps) {
+            (void) guestfs_mount_ro(g, p.device.c_str(), p.mountpoint.c_str());
+        }
+    }
+
+    // Ensure path is absolute in guest
+    std::string guest_path = directory;
+    if (guest_path.empty() || guest_path[0] != '/') {
+        guest_path = std::string("/") + guest_path;
+    }
+    if (!guest_path.empty() && guest_path.back() == '/') {
+        guest_path.pop_back();
+    }
+
+    // Use guestfs_find to recursively list all files in directory
+    char **paths = guestfs_find(g, guest_path.c_str());
+    if (!paths) {
+        guestfs_umount_all(g);
+        guestfs_shutdown(g);
+        guestfs_close(g);
+        throw std::runtime_error("guestfs_find failed for directory: " + guest_path);
+    }
+
+    // Collect all file paths in a vector
+    std::vector<std::string> file_paths;
+    for (size_t k = 0; paths[k] != nullptr; ++k) {
+        std::string path_component = paths[k];
+        std::string full_path = (path_component == ".") ? guest_path : guest_path + "/" + path_component;
+        file_paths.push_back(full_path);
+    }
+
+    free_string_list(paths);
+    guestfs_umount_all(g);
+    guestfs_shutdown(g);
+    guestfs_close(g);
+
+    // Sort the file paths alphabetically
+    std::sort(file_paths.begin(), file_paths.end());
+
+    // Build dictionary with serial numbers as keys
+    pybind11::dict out;
+    for (size_t i = 0; i < file_paths.size(); ++i) {
+        std::string key = std::to_string(i + 1);
+        out[py::str(key)] = py::str(file_paths[i]);
+
+        if (verbose && (i % 1000 == 0)) {
+            py::print("Processed:", i + 1, "files");
+        }
+    }
+
+    return out;
+}
+
+} // namespace vmtool

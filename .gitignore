@@ -14,3 +14,7 @@ __pycache__
 # Cache directory for server
 frontend/server/.cache/
 
+# Environment variables and database
+frontend/server/.env
+database/
+

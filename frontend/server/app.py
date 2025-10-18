@@ -7,6 +7,7 @@ import re
 import hashlib
 from pathlib import Path
 from typing import Any, Dict
+from datetime import datetime
 
 from flask import (
     Flask,
@@ -19,21 +20,226 @@ from flask import (
     send_file,
     Response,
 )
+from flask_login import (
+    LoginManager,
+    login_user,
+    logout_user,
+    login_required,
+    current_user,
+)
+from flask_mail import Mail, Message
 
 # Import the compiled vmtool python module exposed by pybind11
 # Ensure you've built and installed it into your environment before running the server.
 import vmtool  # type: ignore
 
+from config import Config
+from models import db, User
+
 app = Flask(__name__)
-app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev-secret-key")
+app.config.from_object(Config)
+
+# Initialize extensions
+db.init_app(app)
+mail = Mail(app)
+login_manager = LoginManager(app)
+login_manager.login_view = 'login'
+login_manager.login_message = 'Please log in to access this page.'
+
+@login_manager.user_loader
+def load_user(user_id: int) -> User | None:
+    """Load user by ID for Flask-Login."""
+    return User.query.get(int(user_id))
+
+# Create database tables
+with app.app_context():
+    db.create_all()
 
 
 @app.route("/")
+@login_required
 def index() -> str:
     return render_template("index.html")
 
 
+@app.route("/login", methods=["GET", "POST"])
+def login() -> str | Response:
+    if current_user.is_authenticated:
+        return redirect(url_for("index"))
+    
+    if request.method == "GET":
+        return render_template("login.html")
+    
+    username = request.form.get("username", "").strip()
+    password = request.form.get("password", "")
+    remember = request.form.get("remember") == "on"
+    
+    if not username or not password:
+        flash("Username and password are required", "error")
+        return redirect(url_for("login"))
+    
+    # Try to find user by username or email
+    user = User.query.filter(
+        (User.username == username) | (User.email == username)
+    ).first()
+    
+    if not user or not user.check_password(password):
+        flash("Invalid username or password", "error")
+        return redirect(url_for("login"))
+    
+    # Check if email verification is required
+    if app.config['EMAIL_VERIFICATION_REQUIRED'] and not user.is_verified:
+        flash("Please verify your email before logging in", "error")
+        return redirect(url_for("login"))
+    
+    # Update last login time
+    user.last_login = datetime.utcnow()
+    db.session.commit()
+    
+    login_user(user, remember=remember)
+    flash(f"Welcome back, {user.username}!", "success")
+    
+    # Redirect to next page or index
+    next_page = request.args.get("next")
+    if next_page:
+        return redirect(next_page)
+    return redirect(url_for("index"))
+
+
+@app.route("/signup", methods=["GET", "POST"])
+def signup() -> str | Response:
+    if current_user.is_authenticated:
+        return redirect(url_for("index"))
+    
+    if request.method == "GET":
+        return render_template("signup.html")
+    
+    username = request.form.get("username", "").strip()
+    email = request.form.get("email", "").strip()
+    password = request.form.get("password", "")
+    confirm_password = request.form.get("confirm_password", "")
+    
+    # Validation
+    if not username or not email or not password:
+        flash("All fields are required", "error")
+        return redirect(url_for("signup"))
+    
+    if password != confirm_password:
+        flash("Passwords do not match", "error")
+        return redirect(url_for("signup"))
+    
+    if len(password) < 8:
+        flash("Password must be at least 8 characters long", "error")
+        return redirect(url_for("signup"))
+    
+    # Check if user already exists
+    if User.query.filter_by(username=username).first():
+        flash("Username already exists", "error")
+        return redirect(url_for("signup"))
+    
+    if User.query.filter_by(email=email).first():
+        flash("Email already registered", "error")
+        return redirect(url_for("signup"))
+    
+    # Create new user
+    user = User(username=username, email=email)
+    user.set_password(password)
+    
+    # If email verification is not required, verify immediately
+    if not app.config['EMAIL_VERIFICATION_REQUIRED']:
+        user.is_verified = True
+    
+    db.session.add(user)
+    db.session.commit()
+    
+    # Send verification email if required
+    if app.config['EMAIL_VERIFICATION_REQUIRED']:
+        try:
+            send_verification_email(user)
+            flash("Account created! Please check your email to verify your account.", "success")
+        except Exception as e:
+            flash(f"Account created but failed to send verification email: {e}", "warning")
+    else:
+        flash("Account created successfully! You can now log in.", "success")
+    
+    return redirect(url_for("login"))
+
+
+@app.route("/logout")
+@login_required
+def logout() -> Response:
+    logout_user()
+    flash("You have been logged out", "success")
+    return redirect(url_for("login"))
+
+
+@app.route("/verify-email/<token>")
+def verify_email(token: str) -> Response:
+    email = User.verify_token(token, app.config['SECRET_KEY'], app.config['EMAIL_VERIFICATION_TOKEN_MAX_AGE'])
+    
+    if not email:
+        flash("Invalid or expired verification link", "error")
+        return redirect(url_for("login"))
+    
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        flash("User not found", "error")
+        return redirect(url_for("login"))
+    
+    if user.is_verified:
+        flash("Email already verified", "info")
+        return redirect(url_for("login"))
+    
+    user.is_verified = True
+    db.session.commit()
+    
+    flash("Email verified successfully! You can now log in.", "success")
+    return redirect(url_for("login"))
+
+
+def send_verification_email(user: User) -> None:
+    """Send verification email to user."""
+    token = user.generate_verification_token(app.config['SECRET_KEY'])
+    # Use BASE_URL from config instead of url_for to avoid SERVER_NAME issues
+    base_url = app.config.get('BASE_URL', 'http://127.0.0.1:8000')
+    verify_url = f"{base_url}/verify-email/{token}"
+    
+    msg = Message(
+        'Verify Your Email - VM Tool Server',
+        recipients=[user.email]
+    )
+    msg.body = f'''Hello {user.username},
+
+Thank you for signing up for VM Tool Server!
+
+Please click the link below to verify your email address:
+{verify_url}
+
+This link will expire in 1 hour.
+
+If you did not create this account, please ignore this email.
+
+Best regards,
+VM Tool Server Team
+'''
+    
+    # Check authentication method
+    if app.config.get('MAIL_AUTH_METHOD') == 'oauth2':
+        # Use OAuth2 authentication
+        try:
+            from gmail_oauth import send_email_with_oauth2
+            sender_email = app.config.get('MAIL_DEFAULT_SENDER') or app.config.get('MAIL_USERNAME')
+            if not send_email_with_oauth2(mail, msg, sender_email):
+                raise Exception("OAuth2 email sending failed")
+        except Exception as e:
+            raise Exception(f"Failed to send email via OAuth2: {e}")
+    else:
+        # Use standard SMTP with password
+        mail.send(msg)
+
+
 @app.route("/list-files", methods=["GET", "POST"])
+@login_required
 def list_files() -> str | Response:
     if request.method == "GET":
         return render_template("list_files.html", result=None)
@@ -85,6 +291,7 @@ def list_files() -> str | Response:
 
 
 @app.route("/files-json", methods=["GET", "POST"])
+@login_required
 def files_json() -> str | Response:
     if request.method == "GET":
         return render_template("files_json.html", result=None)
@@ -107,6 +314,7 @@ def files_json() -> str | Response:
 
 
 @app.route("/meta", methods=["GET", "POST"])
+@login_required
 def meta() -> str | Response:
     if request.method == "GET":
         return render_template("meta_data.html", result=None)
@@ -127,6 +335,7 @@ def meta() -> str | Response:
 
 
 @app.route("/file-contents", methods=["GET", "POST"])
+@login_required
 def file_contents() -> str | Response:
     if request.method == "GET":
         return render_template("file_contents.html", result=None)
@@ -161,6 +370,7 @@ def file_contents() -> str | Response:
 
 
 @app.route("/file-contents-format", methods=["GET", "POST"])
+@login_required
 def file_contents_format() -> str | Response:
     if request.method == "GET":
         return render_template("file_contents_format.html", result=None)
@@ -189,6 +399,7 @@ def file_contents_format() -> str | Response:
 
 
 @app.route("/file-compare", methods=["GET", "POST"])
+@login_required
 def file_compare() -> str | Response:
     if request.method == "GET":
         return render_template("file_compare.html", result=None)
@@ -276,6 +487,7 @@ def file_compare() -> str | Response:
 
 
 @app.route("/check-exists", methods=["GET", "POST"])
+@login_required
 def check_exists() -> str | Response:
     if request.method == "GET":
         return render_template("check_exists.html", result=None)
@@ -295,6 +507,238 @@ def check_exists() -> str | Response:
         return redirect(url_for("check_exists"))
 
 
+@app.route("/files-diff", methods=["GET", "POST"])
+@login_required
+def files_diff() -> str | Response:
+    if request.method == "GET":
+        return render_template("files_diff.html", result=None)
+
+    disk1 = request.form.get("disk_path_1", "").strip()
+    disk2 = request.form.get("disk_path_2", "").strip()
+
+    if not disk1 or not disk2:
+        flash("Both disk paths are required", "error")
+        return redirect(url_for("files_diff"))
+
+    try:
+        # Create cache directory if it doesn't exist
+        cache_dir = Path(__file__).parent / ".cache"
+        cache_dir.mkdir(exist_ok=True)
+
+        # Generate cache keys for both disks
+        cache_key1 = hashlib.sha256(f"{disk1}:files".encode()).hexdigest()
+        cache_key2 = hashlib.sha256(f"{disk2}:files".encode()).hexdigest()
+        cache_file1 = cache_dir / f"files_diff_{cache_key1}.json"
+        cache_file2 = cache_dir / f"files_diff_{cache_key2}.json"
+
+        # Get file lists from both disks (use cache or fetch fresh)
+        if cache_file1.exists():
+            with open(cache_file1, 'r') as f:
+                files1_dict = json.load(f)
+        else:
+            files1_dict = vmtool.list_all_filenames_in_disk(disk1)
+            with open(cache_file1, 'w') as f:
+                json.dump(files1_dict, f, indent=2)
+
+        if cache_file2.exists():
+            with open(cache_file2, 'r') as f:
+                files2_dict = json.load(f)
+        else:
+            files2_dict = vmtool.list_all_filenames_in_disk(disk2)
+            with open(cache_file2, 'w') as f:
+                json.dump(files2_dict, f, indent=2)
+
+        # Extract just the file paths (values) and sort them
+        files1_set = set(files1_dict.values())
+        files2_set = set(files2_dict.values())
+        
+        # Calculate file categories
+        only_in_disk1 = files1_set - files2_set
+        only_in_disk2 = files2_set - files1_set
+        common_files = files1_set & files2_set
+
+        # Build combined data for AG Grid
+        all_files_data = []
+        
+        # Add files only in disk1
+        for filepath in sorted(only_in_disk1):
+            all_files_data.append({
+                "filename": filepath,
+                "status": "Only in VM1",
+                "in_vm1": True,
+                "in_vm2": False
+            })
+        
+        # Add files only in disk2
+        for filepath in sorted(only_in_disk2):
+            all_files_data.append({
+                "filename": filepath,
+                "status": "Only in VM2",
+                "in_vm1": False,
+                "in_vm2": True
+            })
+        
+        # Add common files
+        for filepath in sorted(common_files):
+            all_files_data.append({
+                "filename": filepath,
+                "status": "Common",
+                "in_vm1": True,
+                "in_vm2": True
+            })
+
+        # Build side-by-side diff data
+        all_files_sorted = sorted(files1_set | files2_set)
+        diff_rows = []
+        for filepath in all_files_sorted:
+            in_vm1 = filepath in files1_set
+            in_vm2 = filepath in files2_set
+            diff_rows.append({
+                "filename": filepath,
+                "in_vm1": in_vm1,
+                "in_vm2": in_vm2,
+                "status": "Common" if (in_vm1 and in_vm2) else ("Only in VM1" if in_vm1 else "Only in VM2")
+            })
+
+        return render_template(
+            "files_diff.html",
+            result={
+                "data": all_files_data,
+                "diff_rows": diff_rows,
+                "disk1": disk1,
+                "disk2": disk2,
+                "total_files1": len(files1_set),
+                "total_files2": len(files2_set),
+                "common_files": len(common_files),
+                "only_in_disk1": len(only_in_disk1),
+                "only_in_disk2": len(only_in_disk2),
+                "cache_file1": str(cache_file1),
+                "cache_file2": str(cache_file2),
+            },
+        )
+    except Exception as e:  # noqa: BLE001
+        flash(f"Error: {e}", "error")
+        return redirect(url_for("files_diff"))
+
+
+@app.route("/directory-diff", methods=["GET", "POST"])
+@login_required
+def directory_diff() -> str | Response:
+    if request.method == "GET":
+        return render_template("directory_diff.html", result=None)
+
+    disk1 = request.form.get("disk_path_1", "").strip()
+    disk2 = request.form.get("disk_path_2", "").strip()
+    dir1 = request.form.get("directory_1", "").strip()
+    dir2 = request.form.get("directory_2", "").strip()
+
+    if not disk1 or not disk2 or not dir1 or not dir2:
+        flash("All fields are required", "error")
+        return redirect(url_for("directory_diff"))
+
+    try:
+        # Create cache directory if it doesn't exist
+        cache_dir = Path(__file__).parent / ".cache"
+        cache_dir.mkdir(exist_ok=True)
+
+        # Generate cache keys for both directories
+        cache_key1 = hashlib.sha256(f"{disk1}:{dir1}:dir".encode()).hexdigest()
+        cache_key2 = hashlib.sha256(f"{disk2}:{dir2}:dir".encode()).hexdigest()
+        cache_file1 = cache_dir / f"dir_diff_{cache_key1}.json"
+        cache_file2 = cache_dir / f"dir_diff_{cache_key2}.json"
+
+        # Get file lists from both directories (use cache or fetch fresh)
+        if cache_file1.exists():
+            with open(cache_file1, 'r') as f:
+                files1_dict = json.load(f)
+        else:
+            files1_dict = vmtool.list_all_filenames_in_directory(disk1, dir1)
+            with open(cache_file1, 'w') as f:
+                json.dump(files1_dict, f, indent=2)
+
+        if cache_file2.exists():
+            with open(cache_file2, 'r') as f:
+                files2_dict = json.load(f)
+        else:
+            files2_dict = vmtool.list_all_filenames_in_directory(disk2, dir2)
+            with open(cache_file2, 'w') as f:
+                json.dump(files2_dict, f, indent=2)
+
+        # Extract just the file paths (values) and sort them
+        files1_set = set(files1_dict.values())
+        files2_set = set(files2_dict.values())
+        
+        # Calculate file categories
+        only_in_dir1 = files1_set - files2_set
+        only_in_dir2 = files2_set - files1_set
+        common_files = files1_set & files2_set
+
+        # Build combined data for AG Grid
+        all_files_data = []
+        
+        # Add files only in dir1
+        for filepath in sorted(only_in_dir1):
+            all_files_data.append({
+                "filename": filepath,
+                "status": "Only in Dir1",
+                "in_dir1": True,
+                "in_dir2": False
+            })
+        
+        # Add files only in dir2
+        for filepath in sorted(only_in_dir2):
+            all_files_data.append({
+                "filename": filepath,
+                "status": "Only in Dir2",
+                "in_dir1": False,
+                "in_dir2": True
+            })
+        
+        # Add common files
+        for filepath in sorted(common_files):
+            all_files_data.append({
+                "filename": filepath,
+                "status": "Common",
+                "in_dir1": True,
+                "in_dir2": True
+            })
+
+        # Build side-by-side diff data
+        all_files_sorted = sorted(files1_set | files2_set)
+        diff_rows = []
+        for filepath in all_files_sorted:
+            in_dir1 = filepath in files1_set
+            in_dir2 = filepath in files2_set
+            diff_rows.append({
+                "filename": filepath,
+                "in_dir1": in_dir1,
+                "in_dir2": in_dir2,
+                "status": "Common" if (in_dir1 and in_dir2) else ("Only in Dir1" if in_dir1 else "Only in Dir2")
+            })
+
+        return render_template(
+            "directory_diff.html",
+            result={
+                "data": all_files_data,
+                "diff_rows": diff_rows,
+                "disk1": disk1,
+                "disk2": disk2,
+                "dir1": dir1,
+                "dir2": dir2,
+                "total_files1": len(files1_set),
+                "total_files2": len(files2_set),
+                "common_files": len(common_files),
+                "only_in_dir1": len(only_in_dir1),
+                "only_in_dir2": len(only_in_dir2),
+                "cache_file1": str(cache_file1),
+                "cache_file2": str(cache_file2),
+            },
+        )
+    except Exception as e:  # noqa: BLE001
+        flash(f"Error: {e}", "error")
+        return redirect(url_for("directory_diff"))
+
+
 @app.errorhandler(404)
 def not_found(_: Exception) -> tuple[str, int]:
     return render_template("404.html"), 404
@@ -304,4 +748,4 @@ def create_app() -> Flask:
 
 if __name__ == "__main__":
     # Export FLASK_APP=app.py and run: python app.py
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8000)), debug=True)

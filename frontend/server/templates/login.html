@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block title %}Login{% endblock %}
+{% block content %}
+<div style="max-width: 450px; margin: 3rem auto;">
+  <h2>Login to VM Tool Server</h2>
+  <p style="color: #888; margin-bottom: 2rem;">Enter your credentials to access the VM tools.</p>
+
+  <form method="POST">
+    <fieldset>
+      <label for="username">
+        Username or Email
+        <input type="text" id="username" name="username" placeholder="Enter username or email" required autofocus />
+      </label>
+      
+      <label for="password">
+        Password
+        <input type="password" id="password" name="password" placeholder="Enter password" required />
+      </label>
+      
+      <label>
+        <input type="checkbox" name="remember" />
+        Remember me
+      </label>
+      
+      <button type="submit">Login</button>
+    </fieldset>
+  </form>
+
+  <p style="text-align: center; margin-top: 1.5rem;">
+    Don't have an account? <a href="{{ url_for('signup') }}">Sign up here</a>
+  </p>
+</div>
+{% endblock %}

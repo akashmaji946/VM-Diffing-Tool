@@ -47,4 +47,10 @@ pybind11::dict check_file_exists_in_disk(const std::string& disk_path, const std
 // list all files from a directory in the guest image
 pybind11::dict list_files_in_directory_in_disk(const std::string& disk_path, const std::string& directory, bool detailed);
 
+// list all files in the disk with serial numbers as keys
+pybind11::dict list_all_filenames_in_disk(const std::string& disk_path, bool verbose = false);
+
+// list all filenames in a directory with serial numbers as keys
+pybind11::dict list_all_filenames_in_directory(const std::string& disk_path, const std::string& directory, bool verbose = false);
+
 } // namespace vmtool
