@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+{% block title %}Run QEMU VM{% endblock %}
+{% block content %}
+<h2>Run QEMU VM</h2>
+<form method="post">
+  <fieldset>
+    <label>Disk Image (.qcow2/.vdi/.vmdk)
+      <input type="text" name="disk" value="{{ disk or '' }}" placeholder="/path/to/disk.qcow2" required>
+    </label>
+    <div class="grid">
+      <label>CPUs
+        <input type="number" name="cpus" value="{{ cpus or 2 }}" min="1">
+      </label>
+      <label>Memory (MB)
+        <input type="number" name="memory" value="{{ memory or 2048 }}" min="128">
+      </label>
+    </div>
+    <label>VM Name
+      <input type="text" name="name" value="{{ name or '' }}" placeholder="Optional">
+    </label>
+    <label>
+      <input type="checkbox" name="uefi" {% if uefi %}checked{% endif %}>
+      Use UEFI (OVMF) if available
+    </label>
+    <label>
+      <input type="checkbox" name="convert" {% if convert %}checked{% endif %}>
+      Convert .vdi/.vmdk to .qcow2 before running
+    </label>
+    <label>
+      <input type="checkbox" name="no_kvm" {% if no_kvm %}checked{% endif %}>
+      Disable KVM acceleration
+    </label>
+  </fieldset>
+  <button type="submit">Run VM</button>
+</form>
+
+{% if result %}
+  <h3>Result</h3>
+  <pre class="code mono">{{ result.output | safe }}</pre>
+{% endif %}
+{% endblock %}

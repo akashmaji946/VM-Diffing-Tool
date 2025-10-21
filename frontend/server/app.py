@@ -364,6 +364,62 @@ def files_json() -> str | Response:
         return redirect(url_for("files_json"))
 
 
+@app.route("/convert", methods=["GET", "POST"])
+@login_required
+def convert_page() -> str | Response:
+    """HTML form to convert disk images between formats (qcow2, vdi, vmdk, raw)."""
+    if request.method == "GET":
+        return render_template("convert.html", result=None)
+
+    # POST
+    src_img = (request.form.get("src_img") or "").strip()
+    dest_img = (request.form.get("dest_img") or "").strip()
+    src_format = (request.form.get("src_format") or "").strip().lower()
+    dest_format = (request.form.get("dest_format") or "").strip().lower()
+
+    if not src_img or not dest_img or not src_format or not dest_format:
+        flash("All fields are required", "error")
+        return render_template("convert.html", result=None, src_img=src_img, dest_img=dest_img, src_format=src_format, dest_format=dest_format)
+
+    if not os.path.exists(src_img):
+        flash(f"Source image not found: {src_img}", "error")
+        return render_template("convert.html", result=None, src_img=src_img, dest_img=dest_img, src_format=src_format, dest_format=dest_format)
+
+    allowed_formats = {"qcow2", "vdi", "vmdk", "raw"}
+    if src_format not in allowed_formats or dest_format not in allowed_formats:
+        flash(f"Unsupported format. Allowed: {', '.join(sorted(allowed_formats))}", "error")
+        return render_template("convert.html", result=None, src_img=src_img, dest_img=dest_img, src_format=src_format, dest_format=dest_format)
+
+    # Ensure destination directory exists
+    dest_dir = os.path.dirname(dest_img) or "."
+    if dest_dir and not os.path.exists(dest_dir):
+        try:
+            os.makedirs(dest_dir, exist_ok=True)
+        except Exception as e:  # noqa: BLE001
+            flash(f"Failed to create destination directory: {e}", "error")
+            return render_template("convert.html", result=None, src_img=src_img, dest_img=dest_img, src_format=src_format, dest_format=dest_format)
+
+    try:
+        # Perform conversion via vmtool.convert.convert
+        out = vmtool.convert.convert(src_img, dest_img, src_format, dest_format)  # type: ignore[attr-defined]
+        result = {
+            "status": "success",
+            "src_img": src_img,
+            "dest_img": dest_img,
+            "src_format": src_format,
+            "dest_format": dest_format,
+            "output": out,
+        }
+        flash("Disk image converted successfully", "success")
+        return render_template("convert.html", result=result, src_img=src_img, dest_img=dest_img, src_format=src_format, dest_format=dest_format)
+    except AttributeError:
+        flash("vmtool.convert.convert is not available. Please ensure vmtool was built with conversion support.", "error")
+        return render_template("convert.html", result=None, src_img=src_img, dest_img=dest_img, src_format=src_format, dest_format=dest_format)
+    except Exception as e:  # noqa: BLE001
+        flash(f"Conversion failed: {e}", "error")
+        return render_template("convert.html", result=None, src_img=src_img, dest_img=dest_img, src_format=src_format, dest_format=dest_format)
+
+
 @app.route("/meta", methods=["GET", "POST"])
 @login_required
 def meta() -> str | Response:
@@ -818,6 +874,120 @@ def block_data_page() -> str:
     return render_template("block_data.html")
 
 
+# ---------------- VM Manager (QEMU/VirtualBox/VMware) ----------------
+@app.route("/vm/qemu", methods=["GET", "POST"])
+@login_required
+def vm_qemu() -> str | Response:
+    if request.method == "GET":
+        return render_template("run_qemu_vm.html", result=None)
+
+    # POST
+    disk = (request.form.get("disk") or "").strip()
+    cpus = request.form.get("cpus", "2").strip()
+    memory = request.form.get("memory", "2048").strip()
+    name = (request.form.get("name") or "").strip()
+    uefi = request.form.get("uefi") == "on"
+    convert = request.form.get("convert") == "on"
+    no_kvm = request.form.get("no_kvm") == "on"
+
+    if not disk:
+        flash("Disk is required", "error")
+        return redirect(url_for("vm_qemu"))
+
+    try:
+        res = vmtool.vmmanager.run_qemu_vm(  # type: ignore[attr-defined]
+            disk=disk,
+            cpus=int(cpus),
+            memory_mb=int(memory),
+            name=name,
+            use_kvm=not no_kvm,
+            use_uefi=uefi,
+            convert_if_needed=convert,
+        )
+        return render_template("run_qemu_vm.html", result=res, disk=disk, cpus=cpus, memory=memory, name=name, uefi=uefi, convert=convert, no_kvm=no_kvm)
+    except Exception as e:  # noqa: BLE001
+        flash(f"Failed to run QEMU VM: {e}", "error")
+        return redirect(url_for("vm_qemu"))
+
+
+@app.route("/vm/vbox", methods=["GET", "POST"])
+@login_required
+def vm_vbox() -> str | Response:
+    if request.method == "GET":
+        return render_template("run_vbox_vm.html", result=None)
+
+    disk = (request.form.get("disk") or "").strip()
+    cpus = request.form.get("cpus", "2").strip()
+    memory = request.form.get("memory", "2048").strip()
+    name = (request.form.get("name") or "").strip()
+    vram = request.form.get("vram", "32").strip()
+    ostype = (request.form.get("ostype") or "Other_64").strip()
+    bridged_if = (request.form.get("bridged_if") or "").strip()
+    convert = request.form.get("convert") == "on"
+
+    if not disk:
+        flash("Disk is required", "error")
+        return redirect(url_for("vm_vbox"))
+
+    try:
+        res = vmtool.vmmanager.run_vbox_vm(  # type: ignore[attr-defined]
+            disk=disk,
+            cpus=int(cpus),
+            memory_mb=int(memory),
+            name=name,
+            vram_mb=int(vram),
+            ostype=ostype,
+            bridged_if=bridged_if,
+            convert_if_needed=convert,
+        )
+        return render_template("run_vbox_vm.html", result=res, disk=disk, cpus=cpus, memory=memory, name=name, vram=vram, ostype=ostype, bridged_if=bridged_if, convert=convert)
+    except Exception as e:  # noqa: BLE001
+        flash(f"Failed to run VirtualBox VM: {e}", "error")
+        return redirect(url_for("vm_vbox"))
+
+
+@app.route("/vm/vmware", methods=["GET", "POST"])
+@login_required
+def vm_vmware() -> str | Response:
+    if request.method == "GET":
+        return render_template("run_vmware_vmdk.html", result=None)
+
+    disk = (request.form.get("disk") or "").strip()
+    cpus = request.form.get("cpus", "2").strip()
+    memory = request.form.get("memory", "2048").strip()
+    name = (request.form.get("name") or "").strip()
+    vram = request.form.get("vram", "32").strip()
+    guestos = (request.form.get("guestos") or "otherlinux-64").strip()
+    vm_dir = (request.form.get("vm_dir") or "").strip()
+    nic_model = (request.form.get("nic_model") or "e1000").strip()
+    no_net = request.form.get("no_net") == "on"
+    convert = request.form.get("convert") == "on"
+    nogui = request.form.get("nogui") == "on"
+
+    if not disk:
+        flash("Disk is required", "error")
+        return redirect(url_for("vm_vmware"))
+
+    try:
+        res = vmtool.vmmanager.run_vmware_vmdk(  # type: ignore[attr-defined]
+            disk=disk,
+            cpus=int(cpus),
+            memory_mb=int(memory),
+            name=name,
+            vram_mb=int(vram),
+            guest_os=guestos,
+            vm_dir=vm_dir,
+            nic_model=nic_model,
+            no_net=no_net,
+            convert_if_needed=convert,
+            nogui=nogui,
+        )
+        return render_template("run_vmware_vmdk.html", result=res, disk=disk, cpus=cpus, memory=memory, name=name, vram=vram, guestos=guestos, vm_dir=vm_dir, nic_model=nic_model, no_net=no_net, convert=convert, nogui=nogui)
+    except Exception as e:  # noqa: BLE001
+        flash(f"Failed to run VMware VM: {e}", "error")
+        return redirect(url_for("vm_vmware"))
+
+
 @app.route("/api/compare", methods=["POST"])
 @login_required
 def api_compare() -> tuple[Dict[str, Any], int] | Dict[str, Any]:
@@ -1055,6 +1225,62 @@ def api_block_data() -> tuple[Dict[str, Any], int] | Dict[str, Any]:
         
         return jsonify(result)
     
+    except Exception as e:  # noqa: BLE001
+        return {"error": str(e)}, 500
+
+
+@app.route("/api/convert", methods=["POST"])
+@login_required
+def api_convert() -> tuple[Dict[str, Any], int] | Dict[str, Any]:
+    """API endpoint to convert disk images between formats (qcow2, vdi, vmdk).
+
+    Request JSON:
+    {
+      "src_img": "/path/to/src.img",
+      "dest_img": "/path/to/dest.img",
+      "src_format": "qcow2",
+      "dest_format": "vmdk"
+    }
+    """
+    try:
+        data = request.json or {}
+        src_img = (data.get("src_img") or "").strip()
+        dest_img = (data.get("dest_img") or "").strip()
+        src_format = (data.get("src_format") or "").strip().lower()
+        dest_format = (data.get("dest_format") or "").strip().lower()
+
+        if not src_img or not dest_img or not src_format or not dest_format:
+            return {"error": "'src_img', 'dest_img', 'src_format', and 'dest_format' are required"}, 400
+
+        if not os.path.exists(src_img):
+            return {"error": f"Source image not found: {src_img}"}, 400
+
+        allowed_formats = {"qcow2", "vdi", "vmdk", "raw"}
+        if src_format not in allowed_formats:
+            return {"error": f"Unsupported src_format: {src_format}. Allowed: {sorted(allowed_formats)}"}, 400
+        if dest_format not in allowed_formats:
+            return {"error": f"Unsupported dest_format: {dest_format}. Allowed: {sorted(allowed_formats)}"}, 400
+
+        # Ensure destination directory exists
+        dest_dir = os.path.dirname(dest_img) or "."
+        if dest_dir and not os.path.exists(dest_dir):
+            os.makedirs(dest_dir, exist_ok=True)
+
+        # Perform conversion via vmtool.convert.convert
+        # vmtool exposes a submodule 'convert' with function 'convert'
+        try:
+            out = vmtool.convert.convert(src_img, dest_img, src_format, dest_format)  # type: ignore[attr-defined]
+        except AttributeError:
+            return {"error": "vmtool.convert.convert is not available. Please ensure the vmtool module was built with conversion support."}, 500
+
+        return {
+            "status": "success",
+            "src_img": src_img,
+            "dest_img": dest_img,
+            "src_format": src_format,
+            "dest_format": dest_format,
+            "output": out,
+        }
     except Exception as e:  # noqa: BLE001
         return {"error": str(e)}, 500
 

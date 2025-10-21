@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+{% block title %}Run VMware VM{% endblock %}
+{% block content %}
+<h2>Run VMware VM (VMDK)</h2>
+<form method="post">
+  <fieldset>
+    <label>Disk Image (.vmdk or .vdi/.qcow2 with convert)
+      <input type="text" name="disk" value="{{ disk or '' }}" placeholder="/path/to/disk.vmdk" required>
+    </label>
+    <div class="grid">
+      <label>CPUs
+        <input type="number" name="cpus" value="{{ cpus or 2 }}" min="1">
+      </label>
+      <label>Memory (MB)
+        <input type="number" name="memory" value="{{ memory or 2048 }}" min="128">
+      </label>
+      <label>VRAM (MB)
+        <input type="number" name="vram" value="{{ vram or 32 }}" min="1">
+      </label>
+    </div>
+    <label>VM Name
+      <input type="text" name="name" value="{{ name or '' }}" placeholder="Optional">
+    </label>
+    <div class="grid">
+      <label>Guest OS ID (VMware)
+        <select name="guestos">
+          <!-- Windows -->
+          <option value="windows11-64" {% if (guestos or '') == 'windows11-64' %}selected{% endif %}>windows11-64</option>
+          <option value="windows10-64" {% if (guestos or '') == 'windows10-64' %}selected{% endif %}>windows10-64</option>
+          <option value="windows2019srv-64" {% if (guestos or '') == 'windows2019srv-64' %}selected{% endif %}>windows2019srv-64</option>
+          <!-- Linux -->
+          <option value="ubuntu22-64" {% if (guestos or '') == 'ubuntu22-64' %}selected{% endif %}>ubuntu22-64</option>
+          <option value="debian12-64" {% if (guestos or '') == 'debian12-64' %}selected{% endif %}>debian12-64</option>
+          <option value="rhel8-64" {% if (guestos or '') == 'rhel8-64' %}selected{% endif %}>rhel8-64</option>
+          <option value="oraclelinux8-64" {% if (guestos or '') == 'oraclelinux8-64' %}selected{% endif %}>oraclelinux8-64</option>
+          <option value="centos7-64" {% if (guestos or '') == 'centos7-64' %}selected{% endif %}>centos7-64</option>
+          <option value="centos8-64" {% if (guestos or '') == 'centos8-64' %}selected{% endif %}>centos8-64</option>
+          <option value="fedora-64" {% if (guestos or '') == 'fedora-64' %}selected{% endif %}>fedora-64</option>
+          <option value="otherlinux-64" {% if (guestos or 'otherlinux-64') == 'otherlinux-64' %}selected{% endif %}>otherlinux-64</option>
+        </select>
+      </label>
+      <label>NIC Model
+        <select name="nic_model">
+          <option value="e1000" {% if (nic_model or 'e1000') == 'e1000' %}selected{% endif %}>e1000</option>
+          <option value="e1000e" {% if nic_model == 'e1000e' %}selected{% endif %}>e1000e</option>
+          <option value="vmxnet3" {% if nic_model == 'vmxnet3' %}selected{% endif %}>vmxnet3</option>
+        </select>
+      </label>
+    </div>
+    <label>VM Directory (optional)
+      <input type="text" name="vm_dir" value="{{ vm_dir or '' }}" placeholder="Defaults to ~/vmware/<name>">
+    </label>
+    <label>
+      <input type="checkbox" name="no_net" {% if no_net %}checked{% endif %}>
+      Do not attach a virtual NIC
+    </label>
+    <label>
+      <input type="checkbox" name="convert" {% if convert %}checked{% endif %}>
+      If input is .vdi/.qcow2, convert to .vmdk before running
+    </label>
+    <label>
+      <input type="checkbox" name="nogui" {% if nogui %}checked{% endif %}>
+      Start with vmrun nogui when available
+    </label>
+  </fieldset>
+  <button type="submit">Run VM</button>
+</form>
+
+{% if result %}
+  <h3>Result</h3>
+  <pre class="code mono">{{ result.output | safe }}</pre>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+{% block title %}Convert Disk Image{% endblock %}
+{% block content %}
+<h2>Convert Disk Image</h2>
+<p>Use this form to convert between qcow2, vdi, vmdk, and raw formats.</p>
+<form method="post">
+  <div class="grid">
+    <label>Source Image Path
+      <input type="text" name="src_img" value="{{ src_img or '' }}" placeholder="/full/path/to/source.qcow2" required />
+    </label>
+    <label>Destination Image Path
+      <input type="text" name="dest_img" value="{{ dest_img or '' }}" placeholder="/full/path/to/output.vdi" required />
+    </label>
+  </div>
+  <div class="grid">
+    <label>Source Format
+      <select name="src_format" required>
+        {% set formats = ['qcow2', 'vdi', 'vmdk', 'raw'] %}
+        {% for fmt in formats %}
+          <option value="{{ fmt }}" {% if src_format == fmt %}selected{% endif %}>{{ fmt|upper }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Destination Format
+      <select name="dest_format" required>
+        {% for fmt in formats %}
+          <option value="{{ fmt }}" {% if dest_format == fmt %}selected{% endif %}>{{ fmt|upper }}</option>
+        {% endfor %}
+      </select>
+    </label>
+  </div>
+  <button type="submit">Convert</button>
+</form>
+
+{% if result %}
+  <h3>Result</h3>
+  {% if result.status == 'success' %}
+    <article>
+      <header>
+        <strong>Conversion Successful</strong>
+      </header>
+      <ul>
+        <li><strong>Source</strong>: {{ result.src_img }} ({{ result.src_format|upper }})</li>
+        <li><strong>Destination</strong>: {{ result.dest_img }} ({{ result.dest_format|upper }})</li>
+      </ul>
+      {% if result.output %}
+        <details open>
+          <summary>Converter Output</summary>
+          <pre class="code mono">{{ result.output }}</pre>
+        </details>
+      {% endif %}
+      <p>
+        <a class="outline" href="/convert">Convert another image</a>
+      </p>
+    </article>
+  {% endif %}
+{% endif %}
+{% endblock %}

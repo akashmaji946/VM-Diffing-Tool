@@ -42,6 +42,8 @@ add_subdirectory(pybind11)
 pybind11_add_module(vmtool SHARED
     main.cpp
     src/VMTool.cpp
+    src/Converter.cpp
+    src/vmmanager.cpp
 )
 
 # --- Link Libraries ---

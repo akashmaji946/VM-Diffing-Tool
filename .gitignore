@@ -18,5 +18,8 @@ frontend/server/.cache/
 frontend/server/.env
 database/
 
+.disk-images/
+.disk-isos/
+
 
 

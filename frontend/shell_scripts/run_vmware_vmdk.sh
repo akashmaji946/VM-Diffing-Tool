@@ -1,0 +1,203 @@
+#!/usr/bin/env bash
+# Run a VMware VM from an existing VMDK disk using VMware Workstation/Player
+#
+# This script generates a temporary .vmx config pointing to the given .vmdk
+# and starts it with vmrun (preferred) or vmplayer (fallback GUI).
+#
+# Usage:
+#   ./run_vmware_vmdk.sh --disk /path/to/disk.vmdk --cpus 4 --memory 4096 [--name MyVM] [--guestos otherlinux-64|--ostype Ubuntu_64] [--vram 64] [--dir /path/to/vmdir] [--convert] [--nogui]
+#
+# Requirements:
+#   - VMware Workstation/Player installed
+#   - vmrun (preferred) or vmplayer available in PATH
+#   - A valid VMDK file
+
+set -euo pipefail
+
+# ---------- Defaults ----------
+DISK=""
+CPUS=2
+MEMORY=2048       # MB
+VRAM_MB=32        # MB
+NAME=""
+GUEST_OS="otherlinux-64"  # see VMware guestOS IDs (e.g., ubuntu-64, windows10-64)
+VM_DIR=""         # directory to place the .vmx; default under $HOME/vmware/<NAME>
+NO_GUI=0
+NIC_MODEL="e1000"  # default to legacy PCI NIC to avoid PCIe slot issues
+NO_NET=0
+DO_CONVERT=0
+
+# ---------- Helpers ----------
+err(){ echo "[ERROR] $*" >&2; }
+info(){ echo "[INFO]  $*"; }
+
+has_cmd(){ command -v "$1" >/dev/null 2>&1; }
+
+print_usage(){
+  cat <<USAGE
+Run a VMDK with VMware by generating a .vmx on the fly
+
+Usage:
+  $(basename "$0") --disk <vmdk> [--cpus <N>] [--memory <MB>] [--name <NAME>] [--guestos <ID>|--ostype <ID>] [--vram <MB>] [--nic-model e1000|e1000e|vmxnet3] [--no-net] [--dir <DIR>] [--convert] [--nogui]
+
+Options:
+  --disk, -d     Path to disk image (.vmdk) [required]
+  --cpus, -c     Number of virtual CPUs (default: ${CPUS})
+  --memory, -m   Memory in MB (default: ${MEMORY})
+  --name, -n     VM name (default: derived from disk filename)
+  --guestos      VMware guestOS ID (default: ${GUEST_OS})
+  --ostype       Alias for --guestos (e.g., ubuntu-64, windows10-64)
+  --vram         Video RAM in MB (default: ${VRAM_MB})
+  --nic-model    NIC model: e1000 (default), e1000e, vmxnet3
+  --no-net       Do not attach a virtual NIC
+  --dir          Directory to store the generated .vmx (default: ~/vmware/<NAME>)
+  --convert      If input is .qcow2 or .vdi, convert to .vmdk (same name) and use it
+  --nogui        Start with vmrun nogui when vmrun is available
+  --help, -h     Show this help
+
+Examples:
+  $(basename "$0") -d /vms/debian.vmdk -c 4 -m 4096 --name debian-vmdk --vram 64
+  $(basename "$0") --disk /vms/win10.vmdk --memory 8192 --cpus 4 --ostype windows10-64 --nic-model e1000 --nogui
+USAGE
+}
+
+# ---------- Parse args ----------
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --disk|-d) DISK="${2:-}"; shift 2;;
+    --cpus|-c) CPUS="${2:-}"; shift 2;;
+    --memory|-m) MEMORY="${2:-}"; shift 2;;
+    --name|-n) NAME="${2:-}"; shift 2;;
+    --vram) VRAM_MB="${2:-}"; shift 2;;
+    --guestos) GUEST_OS="${2:-}"; shift 2;;
+    --ostype) GUEST_OS="${2:-}"; shift 2;;
+    --dir) VM_DIR="${2:-}"; shift 2;;
+    --nic-model) NIC_MODEL="${2:-}"; shift 2;;
+    --no-net) NO_NET=1; shift;;
+    --convert) DO_CONVERT=1; shift;;
+    --nogui) NO_GUI=1; shift;;
+    --help|-h) print_usage; exit 0;;
+    *) err "Unknown argument: $1"; print_usage; exit 1;;
+  esac
+done
+
+# ---------- Validate ----------
+if [[ -z "$DISK" ]]; then
+  err "--disk is required"
+  print_usage
+  exit 1
+fi
+
+if [[ ! -f "$DISK" ]]; then
+  err "Disk not found: $DISK"
+  exit 1
+fi
+
+case "${DISK,,}" in
+  *.vmdk)
+    :
+    ;;
+  *.qcow2|*.vdi)
+    if (( DO_CONVERT == 0 )); then
+      err "Input is not .vmdk. Provide a .vmdk file or re-run with --convert to convert to VMDK automatically."
+      exit 1
+    fi
+    if ! has_cmd qemu-img; then
+      err "qemu-img not found. Install qemu-utils to allow --convert."
+      exit 1
+    fi
+    src="$DISK"
+    base="$(basename "$src")"
+    dir="$(dirname "$src")"
+    name_no_ext="${base%.*}"
+    out_vmdk="$dir/$name_no_ext.vmdk"
+    info "Converting '$src' -> '$out_vmdk' (VMDK)"
+    qemu-img convert -O vmdk "$src" "$out_vmdk"
+    DISK="$out_vmdk"
+    ;;
+  *)
+    err "Unsupported disk format. Please provide a .vmdk file or use --convert to convert .qcow2/.vdi."
+    exit 1
+    ;;
+esac
+
+if ! [[ "$CPUS" =~ ^[0-9]+$ ]] || (( CPUS < 1 )); then
+  err "--cpus must be a positive integer"; exit 1
+fi
+if ! [[ "$MEMORY" =~ ^[0-9]+$ ]] || (( MEMORY < 128 )); then
+  err "--memory must be an integer (MB) >= 128"; exit 1
+fi
+
+if ! [[ "$VRAM_MB" =~ ^[0-9]+$ ]] || (( VRAM_MB < 1 )); then
+  err "--vram must be a positive integer (MB)"; exit 1
+fi
+
+# NIC model validation
+case "$NIC_MODEL" in
+  e1000|e1000e|vmxnet3) :;;
+  *) err "--nic-model must be one of: e1000, e1000e, vmxnet3"; exit 1;;
+esac
+
+if [[ -z "$NAME" ]]; then
+  base="$(basename "$DISK")"
+  NAME="${base%.*}"
+fi
+
+if [[ -z "$VM_DIR" ]]; then
+  VM_DIR="$HOME/vmware/$NAME"
+fi
+
+mkdir -p "$VM_DIR"
+
+# ---------- Generate VMX ----------
+VMX="$VM_DIR/$NAME.vmx"
+info "Generating VMX at $VMX"
+cat > "$VMX" <<VMX
+.encoding = "UTF-8"
+config.version = "8"
+virtualHW.version = "16"
+displayName = "$NAME"
+annotation = "Autogenerated by run_vmware_vmdk.sh"
+memsize = "$MEMORY"
+numvcpus = "$CPUS"
+cpuid.coresPerSocket = "$CPUS"
+# Guest OS ID
+guestOS = "$GUEST_OS"
+# SCSI controller and disk
+scsi0.present = "TRUE"
+scsi0.virtualDev = "lsilogic"
+scsi0:0.present = "TRUE"
+scsi0:0.fileName = "$(readlink -f "$DISK")"
+# VRAM (in bytes)
+svga.vramSize = "$((${VRAM_MB} * 1048576))"
+# Networking (optional)
+${NO_NET:+#}ethernet0.present = "${NO_NET:+FALSE}"
+${NO_NET:+#}ethernet0.connectionType = "nat"
+${NO_NET:+#}ethernet0.virtualDev = "${NIC_MODEL}"
+${NO_NET:+#}ethernet0.addressType = "generated"
+# USB and sound off for simplicity
+usb.present = "FALSE"
+sound.present = "FALSE"
+# Boot order defaults to disk, then cdrom
+bios.bootOrder = "hdd,cdrom"
+# Enable time sync
+tools.syncTime = "TRUE"
+VMX
+
+# ---------- Launch ----------
+if has_cmd vmrun; then
+  info "Starting VM with vmrun (${NO_GUI:+nogui} mode)"
+  if (( NO_GUI )); then
+    vmrun start "$VMX" nogui
+  else
+    vmrun start "$VMX"
+  fi
+elif has_cmd vmplayer; then
+  info "vmrun not found; launching with vmplayer GUI"
+  vmplayer "$VMX" &
+else
+  err "Neither vmrun nor vmplayer found in PATH. Please install VMware Workstation/Player."
+  exit 1
+fi
+
+info "VM '$NAME' launched using $VMX"

@@ -2,6 +2,8 @@
 #include <pybind11/stl.h>
 
 #include "VMTool.hpp"
+#include "../include/Converter.hpp"
+#include "../include/vmmanager.hpp"
 
 namespace py = pybind11;
 
@@ -15,6 +17,36 @@ PYBIND11_MODULE(vmtool, m) {
     py::module_ libgfs = m.def_submodule("libguestfs", "libguestfs related utilities");
     // Do NOT call into libguestfs at import time; expose a function instead
     libgfs.def("version", &vmtool::get_guestfs_version, "Return the libguestfs version string");
+
+    // Submodule for disk image conversion via qemu-img
+    py::module_ convert = m.def_submodule("convert", "Disk image conversion utilities using qemu-img");
+    convert.def("is_qemu_img_available",
+                &vmtool::Converter::is_qemu_img_available,
+                "Return True if qemu-img is available on PATH");
+    convert.def("convert",
+                [](const std::string &src_img,
+                   const std::string &dest_img,
+                   const std::string &src_format,
+                   const std::string &dest_format) {
+                    auto res = vmtool::Converter::convert(src_img, dest_img, src_format, dest_format);
+                    py::dict src, dest, out;
+                    src["disk"] = res.src_disk;
+                    src["format"] = res.src_format;
+                    src["size"] = py::int_(res.src_size_bytes);
+                    dest["disk"] = res.dest_disk;
+                    dest["format"] = res.dest_format;
+                    dest["size"] = py::int_(res.dest_size_bytes);
+                    out["src"] = src;
+                    out["dest"] = dest;
+                    out["converted"] = res.converted;
+                    out["time"] = res.time_seconds;
+                    return out;
+                },
+                py::arg("src_img"),
+                py::arg("dest_img"),
+                py::arg("src_format"),
+                py::arg("dest_format"),
+                "Convert a disk image from src_format to dest_format using qemu-img and return a dict with src/dest/converted/time.");
 
     // Functions
     m.def("get_version", &vmtool::get_guestfs_version,
@@ -114,4 +146,8 @@ PYBIND11_MODULE(vmtool, m) {
           "Returns a dict with block number as key and formatted data as value.\n"
           "format: 'hex' (uppercase hex bytes separated by spaces) or 'bits' (continuous bitstring).\n"
           "Default block size is 4096 bytes.");
+
+    // Attach vmmanager as a submodule so users can: from vmtool import vmmanager
+    py::module_ vmman = m.def_submodule("vmmanager", "System VM management utilities (QEMU, VirtualBox, VMware)");
+    vmmanager::bind_vmmanager(vmman);
 }

@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% block title %}Run VirtualBox VM{% endblock %}
+{% block content %}
+<h2>Run VirtualBox VM</h2>
+<form method="post">
+  <fieldset>
+    <label>Disk Image (.vdi/.vmdk or .qcow2 with convert)
+      <input type="text" name="disk" value="{{ disk or '' }}" placeholder="/path/to/disk.vdi" required>
+    </label>
+    <div class="grid">
+      <label>CPUs
+        <input type="number" name="cpus" value="{{ cpus or 2 }}" min="1">
+      </label>
+      <label>Memory (MB)
+        <input type="number" name="memory" value="{{ memory or 2048 }}" min="128">
+      </label>
+      <label>VRAM (MB)
+        <input type="number" name="vram" value="{{ vram or 32 }}" min="1">
+      </label>
+    </div>
+    <label>VM Name
+      <input type="text" name="name" value="{{ name or '' }}" placeholder="Optional">
+    </label>
+    <label>OS Type
+      <select name="ostype">
+        <option value="Windows10_64" {% if (ostype or '') == 'Windows10_64' %}selected{% endif %}>Windows10_64</option>
+        <option value="Windows11_64" {% if (ostype or '') == 'Windows11_64' %}selected{% endif %}>Windows11_64</option>
+        <option value="Ubuntu22_LTS_64" {% if (ostype or '') == 'Ubuntu22_LTS_64' %}selected{% endif %}>Ubuntu22_LTS_64</option>
+        <option value="Ubuntu24_LTS_64" {% if (ostype or '') == 'Ubuntu24_LTS_64' %}selected{% endif %}>Ubuntu24_LTS_64</option>
+        <option value="Debian12_64" {% if (ostype or '') == 'Debian12_64' %}selected{% endif %}>Debian12_64</option>
+        <option value="Fedora_64" {% if (ostype or '') == 'Fedora_64' %}selected{% endif %}>Fedora_64</option>
+        <option value="Oracle8_64" {% if (ostype or '') == 'Oracle8_64' %}selected{% endif %}>Oracle8_64</option>
+        <option value="RedHat8_64" {% if (ostype or '') == 'RedHat8_64' %}selected{% endif %}>RedHat8_64</option>
+        <option value="ArchLinux_64" {% if (ostype or '') == 'ArchLinux_64' %}selected{% endif %}>ArchLinux_64</option>
+        <option value="Other_64" {% if (ostype or 'Other_64') == 'Other_64' %}selected{% endif %}>Other_64</option>
+      </select>
+    </label>
+    <label>Bridged Interface (leave blank for NAT)
+      <input type="text" name="bridged_if" value="{{ bridged_if or '' }}" placeholder="e.g., eth0">
+    </label>
+    <label>
+      <input type="checkbox" name="convert" {% if convert %}checked{% endif %}>
+      If input is .qcow2, convert to .vdi before running
+    </label>
+  </fieldset>
+  <button type="submit">Run VM</button>
+</form>
+
+{% if result %}
+  <h3>Result</h3>
+  <pre class="code mono">{{ result.output | safe }}</pre>
+{% endif %}
+{% endblock %}
