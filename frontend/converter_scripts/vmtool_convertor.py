@@ -34,7 +34,7 @@ python vmtool_convertor.py \
 """
 python vmtool_convertor.py \
     --src_img /home/akashmaji/Desktop/vm1.qcow2 \
-    --dest_img /home/akashmaji/Desktop/stranger.vdi \
+    --dest_img /home/akashmaji/Desktop/vm1c.vdi \
     --src_format qcow2 \
     --dest_format vdi
 """

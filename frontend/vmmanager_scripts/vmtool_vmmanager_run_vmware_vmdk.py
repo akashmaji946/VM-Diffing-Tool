@@ -47,3 +47,36 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+# USAGE
+"""
+python vmtool_vmmanager_run_vmware_vmdk.py \
+--disk /path/to/disk.vmdk \
+--cpus 2 \
+--memory 2048 \
+--name my-vm \
+--vram 32 \
+--guestos ubuntu-64 \
+--vm-dir ~/vmware/my-vm \
+--nic-model e1000 \
+--no-net \
+--convert \
+--nogui
+"""
+
+# EXAMPLE
+"""
+python vmtool_vmmanager_run_vmware_vmdk.py \
+--disk /home/akashmaji/Desktop/vm1.vmdk \
+--cpus 2 \
+--memory 2048 \
+--name vm1 \
+--vram 32 \
+--guestos ubuntu-64 \
+--vm-dir ~/vmware/vm1 \
+--nic-model e1000 \
+--no-net \
+--convert \
+--nogui
+"""
+

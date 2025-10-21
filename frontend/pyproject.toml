@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "vmt"
-version = "0.1.0"
+version = "0.2.0"
 description = "VMT CLI for VM disk inspection using vmtool backend"
 authors = [
   { name = "VMT Team" }
@@ -23,3 +23,11 @@ vmt = "vmt.vmt:main"
 
 [tool.setuptools]
 packages = ["vmt"]
+
+# Install CLI script folders alongside the package as shared data so they are
+# available even when running vmt outside the repo checkout.
+# These will typically land under: <prefix>/share/vmt/<dir>
+[tool.setuptools.data-files]
+"share/vmt/vmtool_scripts" = ["vmtool_scripts/*.py"]
+"share/vmt/vmmanager_scripts" = ["vmmanager_scripts/*.py"]
+"share/vmt/converter_scripts" = ["converter_scripts/*.py"]

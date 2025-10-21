@@ -11,7 +11,7 @@ PYBIND11_MODULE(vmtool, m) {
     m.doc() = "VM Tool C++ Backend";
 
     // Public module version
-    m.attr("version") = "0.1";
+    m.attr("version") = "0.2.0";
 
     // Submodule for libguestfs info; expose a version attribute string
     py::module_ libgfs = m.def_submodule("libguestfs", "libguestfs related utilities");

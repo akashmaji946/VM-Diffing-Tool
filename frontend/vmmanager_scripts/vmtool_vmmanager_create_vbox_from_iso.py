@@ -48,3 +48,40 @@ if __name__ == "__main__":
             print(res.get("output", ""))
     except Exception as e:
         print(f"Error creating VM: {e}")
+
+
+# USAGE
+"""
+python vmtool_vmmanager_create_vbox_from_iso.py \
+--iso /path/to/iso.iso \
+--vdi-dir /path/to/vdi-dir \
+--vm-name my-vm \
+--ostype Ubuntu_64 \
+--memory 2048 \
+--cpus 2 \
+--disk-gb 20 \
+--vram 32 \
+--nic nat \
+--boot-order disk,dvd \
+--bridge-if eth0 \
+--convert \
+--nogui
+"""
+
+# EXAMPLE
+"""
+python vmtool_vmmanager_create_vbox_from_iso.py \
+--iso /home/akashmaji/Desktop/ubuntu.iso \
+--vdi-dir /home/akashmaji/Desktop/vdi-dir \
+--vm-name vm1 \
+--ostype Ubuntu_64 \
+--memory 2048 \
+--cpus 2 \
+--disk-gb 20 \
+--vram 32 \
+--nic nat \
+--boot-order disk,dvd \
+--bridge-if eth0 \
+--convert \
+--nogui
+"""

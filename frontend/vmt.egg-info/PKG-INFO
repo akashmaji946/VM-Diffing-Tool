@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: vmt
-Version: 0.1.0
+Version: 0.2.0
 Summary: VMT CLI for VM disk inspection using vmtool backend
 Author: VMT Team
 Keywords: vm,qcow2,guestfs,vmtool,vmt

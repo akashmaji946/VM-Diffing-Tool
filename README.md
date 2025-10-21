@@ -18,6 +18,9 @@ Go to Docs here: [VM-Diffing-Tool Docs](https://github.com/akashmaji946/VM-Diffi
 - **File Compare**: Side-by-side comparison of files from different VM disks
 - **Files Diff**: Compare file lists between two VM disks
 - **Directory Compare**: Recursively compare directories across VM images
+- **Block Compare**: Compare blockwise data of two VM disks
+- **Convert**: Convert VM disk images to different formats
+- **Run VM**: Run a VM from a disk image
 - **Export Reports**: Export comparison results as JSON or PDF
 
 ### User Management
@@ -203,11 +206,18 @@ python3 -m venv .vm
 source .vm/bin/activate
 
 # Install Python dependencies at repo root
-pip install -r requirements.txt
+pip3 install -r requirements.txt
 
 # Install the vmt CLI (editable)
 cd frontend
-pip install -e .
+# install in env
+pip3 install -e .
+# install in system
+sudo pip3 install . --break-system-packages
+
+# check version
+which vmt
+vmt -v
 ```
 
 Editable install means any changes you make to `frontend/vmt/vmt.py` take effect immediately.
@@ -235,6 +245,11 @@ If `vmt list` shows no commands, ensure the directory exists: `frontend/vmtool_s
   - `vmtool_list_all_filenames_in_disk.py` → `list_all_filenames_in_disk`
   - `vmtool_list_all_files_in_disk.py` → `list_all_files_in_disk`
   - `vmtool_list_files_in_directory_in_disk.py` → `list_files_in_directory_in_disk`
+  - `vmtool_vmmanager_create_vbox_from_iso.py` → `vmmanager_create_vbox_from_iso`
+  - `vmtool_vmmanager_run_qemu_vm.py` → `vmmanager_run_qemu_vm`
+  - `vmtool_vmmanager_stop_qemu_vm.py` → `vmmanager_stop_qemu_vm`
+  - `vmtool_vmmanager_list_qemu_vms.py` → `vmmanager_list_qemu_vms`
+  -  `vmtool_convertor.py` → `convertor`
 
 ### Global usage
 
@@ -280,6 +295,42 @@ vmt -c list_files_in_directory_in_disk \
   --disk /path/to/disk.qcow2 \
   --directory /etc \
   --detailed
+
+# Run a QEMU VM
+vmt -c vmmanager_run_qemu_vm \
+  --disk /path/to/disk.qcow2 \
+  --cpus 2 \
+  --memory 2048
+
+# Run a VBox VM
+vmt -c vmmanager_run_vbox_vm \
+  --disk /path/to/disk.qcow2 \
+  --cpus 2 \
+  --memory 2048
+
+# Run a VMWare VM
+vmt -c vmmanager_run_vmware_vmdk \
+  --disk /path/to/disk.qcow2 \
+  --cpus 2 \
+  --memory 2048
+
+# Convert a disk
+vmt -c convertor \
+  --src_img /path/to/src.qcow2 \
+  --dest_img /path/to/dest.vdi \
+  --src_format qcow2 \
+  --dest_format vdi
+
+# Create a VBox VM from ISO
+vmt -c vmmanager_create_vbox_from_iso \
+  --iso /path/to/iso.iso \
+  --vdi_dir /path/to/vdi_dir \
+  --vm_name vm_name \
+  --ostype ostype \
+  --memory_mb memory_mb \
+  --cpus cpus
+
+
 ```
 
 ### Notes on permissions

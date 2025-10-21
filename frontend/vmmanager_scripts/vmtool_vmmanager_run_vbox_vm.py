@@ -40,3 +40,30 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+# USAGE
+"""
+python vmtool_vmmanager_run_vbox_vm.py \
+--disk /path/to/disk.qcow2 \
+--cpus 2 \
+--memory 2048 \
+--name my-vm \
+--vram 32 \
+--ostype Ubuntu_64 \
+--bridged-if eth0 \
+--convert
+"""
+
+# EXAMPLE
+"""
+python vmtool_vmmanager_run_vbox_vm.py \
+--disk /home/akashmaji/Desktop/vm1.qcow2 \
+--cpus 2 \
+--memory 2048 \
+--name vm1 \
+--vram 32 \
+--ostype Ubuntu_64 \
+--bridged-if eth0 \
+--convert
+"""

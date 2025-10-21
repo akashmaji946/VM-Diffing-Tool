@@ -9,30 +9,90 @@ import os
 import subprocess
 from pathlib import Path
 
-VERSION = "0.1"
+VERSION = "0.2.0"
 
 
-def get_scripts_dir() -> Path:
-    """Get the path to vmtool_scripts directory."""
-    # Assuming vmt is installed in frontend/vmt and scripts are in frontend/vmtool_scripts
+def get_package_frontend_dir() -> Path:
+    """Return the frontend directory root near the installed package (parent of vmt/).
+
+    When running from source, this points to <repo>/frontend.
+    When installed system-wide, this points inside site-packages and may
+    not contain the script folders; in that case we'll fall back to other roots.
+    """
     current_file = Path(__file__).resolve()
-    frontend_dir = current_file.parent.parent  # Go up from vmt/ to frontend/
-    scripts_dir = frontend_dir / "vmtool_scripts"
-    return scripts_dir
+    return current_file.parent.parent  # vmt/ -> frontend/
+
+
+def get_candidate_roots() -> list[Path]:
+    """Return candidate roots to search for script folders.
+
+    Priority order:
+    1) The package-adjacent frontend directory (near vmt module).
+    2) Current working directory.
+    3) Parent of current working directory (useful if run inside frontend/).
+    4) Common install-time data prefixes like /usr/local/share/vmt.
+    """
+    roots: list[Path] = []
+    roots.append(get_package_frontend_dir())
+    roots.append(Path.cwd())
+    roots.append(Path.cwd().parent)
+    # Add common install-time data prefixes
+    try:
+        import sys as _sys
+        prefixes = {
+            Path(getattr(_sys, "prefix", "/usr/local")),
+            Path(getattr(_sys, "base_prefix", "/usr")),
+            Path("/usr/local"),
+            Path("/usr"),
+        }
+        for p in prefixes:
+            roots.append(p / "share" / "vmt")
+    except Exception:
+        pass
+    # Deduplicate while preserving order
+    uniq: list[Path] = []
+    seen = set()
+    for r in roots:
+        try:
+            rp = r.resolve()
+        except Exception:
+            rp = r
+        if rp not in seen:
+            uniq.append(rp)
+            seen.add(rp)
+    return uniq
+
+
+def get_script_dirs() -> list[Path]:
+    """Return a list of directories to scan for vmtool CLI scripts.
+
+    We support the following directories under frontend/:
+    - vmtool_scripts/
+    - vmmanager_scripts/
+    - converter_scripts/
+    """
+    script_dirs: list[Path] = []
+    for root in get_candidate_roots():
+        script_dirs.append(root / "vmtool_scripts")
+        script_dirs.append(root / "vmmanager_scripts")
+        script_dirs.append(root / "converter_scripts")
+    return script_dirs
 
 
 def discover_commands() -> dict[str, Path]:
-    """Discover all vmtool_*.py scripts and return them as commands."""
-    scripts_dir = get_scripts_dir()
-    if not scripts_dir.exists():
-        return {}
-    
-    commands = {}
-    for script in scripts_dir.glob("vmtool_*.py"):
-        # Convert vmtool_check_file_exists_in_disk.py -> check_file_exists_in_disk
-        command_name = script.stem.replace("vmtool_", "")
-        commands[command_name] = script
-    
+    """Discover all vmtool_*.py scripts across supported directories.
+
+    Returns a mapping of command_name -> script_path.
+    If duplicate command names are found, later directories override earlier ones.
+    """
+    commands: dict[str, Path] = {}
+    for directory in get_script_dirs():
+        if not directory.exists():
+            continue
+        for script in directory.glob("vmtool_*.py"):
+            # Convert vmtool_check_file_exists_in_disk.py -> check_file_exists_in_disk
+            command_name = script.stem.replace("vmtool_", "")
+            commands[command_name] = script
     return commands
 
 
@@ -45,9 +105,12 @@ def print_welcome() -> None:
 def list_commands() -> int:
     """List all available commands."""
     commands = discover_commands()
-    
+
     if not commands:
-        print("No commands found in vmtool_scripts directory")
+        print("No commands found in any known scripts directory.")
+        print("Searched under:")
+        for root in get_candidate_roots():
+            print(f"  - {root}")
         return 1
     
     print("\nAvailable commands:")
@@ -100,6 +163,8 @@ def print_help() -> None:
     print("\nExamples:")
     print("  vmt list")
     print("  vmt -c check_file_exists_in_disk --disk /path/to/disk.qcow2 --name /etc/hosts")
+    print("  vmt -c vmmanager_run_qemu_vm --disk /path/to/disk.qcow2 --cpus 2 --memory 2048")
+    print("  vmt -c convertor --src_img /path/to/src.qcow2 --dest_img /path/to/dest.vdi --src_format qcow2 --dest_format vdi")
     
     list_commands()
 
