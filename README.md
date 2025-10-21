@@ -4,7 +4,7 @@ A powerful web-based tool for analyzing and comparing virtual machine disk image
 
 ![ascii-art-text](images/ascii-art-text.png)
 
-Go to Docs here: [VM-Diffing-Tool Docs](https://github.com/akashmaji946/VM-Diffing-Tool)
+Go to Docs here: [VM-Diffing-Tool Docs](https://akashmaji946.github.io/VM-Diffing-Tool/)
 
 ## 🌟 Features
 
@@ -332,6 +332,106 @@ vmt -c vmmanager_create_vbox_from_iso \
 
 
 ```
+
+### Script Reference: Convert and VM Launch
+
+This project ships helper scripts under `frontend/converter_scripts/` and `frontend/vmmanager_scripts/`. You can run them directly with Python, or via the `vmt` CLI using the mapped command names shown below.
+
+#### Convert a disk image (qemu-img)
+
+- Python script: `frontend/converter_scripts/vmtool_convertor.py`
+- vmt command: `convertor`
+
+Usage (direct):
+
+```bash
+python3 frontend/converter_scripts/vmtool_convertor.py \
+  --src_img /path/to/src.qcow2 \
+  --dest_img /path/to/dest.vdi \
+  --src_format qcow2 \
+  --dest_format vdi
+```
+
+Usage (via vmt):
+
+```bash
+vmt -c convertor \
+  --src_img /path/to/src.qcow2 \
+  --dest_img /path/to/dest.vdi \
+  --src_format qcow2 \
+  --dest_format vdi
+```
+
+Notes:
+- The destination directory must be writable. When running inside Docker, ensure the path is mounted read-write.
+- Supported formats depend on `qemu-img` (e.g., qcow2, vdi, vmdk, raw).
+
+#### Run a QEMU VM from a disk
+
+- Python script: `frontend/vmmanager_scripts/vmtool_vmmanager_run_qemu_vm.py`
+- vmt command: `vmmanager_run_qemu_vm`
+
+Usage (via vmt):
+
+```bash
+vmt -c vmmanager_run_qemu_vm \
+  --disk /path/to/disk.qcow2 \
+  --cpus 2 \
+  --memory 2048 \
+  --name my-vm [--no-kvm] [--uefi] [--convert]
+```
+
+Headless/VNC inside Docker:
+- Headless fallback: the backend will auto-use `-display none` when no `DISPLAY` is present.
+- Force headless: set `VMTOOL_QEMU_HEADLESS=1` in the environment.
+- VNC mode: set `VMTOOL_QEMU_VNC=<N>` to enable `-display none -vnc :N` and map the port (e.g., `-p 5900:5900` for `N=0`). Then connect your VNC viewer to `127.0.0.1:5900`.
+
+Networking:
+- User networking is enabled with SSH forward: host `127.0.0.1:2222` -> guest `22`.
+
+#### Run a VirtualBox VM from a disk
+
+- Python script: `frontend/vmmanager_scripts/vmtool_vmmanager_run_vbox_vm.py`
+- vmt command: `vmmanager_run_vbox_vm`
+
+Usage (via vmt):
+
+```bash
+vmt -c vmmanager_run_vbox_vm \
+  --disk /path/to/disk.vdi \
+  --cpus 2 \
+  --memory 2048 \
+  --name my-vm \
+  --vram 32 \
+  --ostype Ubuntu_64 [--bridged-if eth0] [--convert]
+```
+
+Notes:
+- VirtualBox operations require VBox kernel modules on the host. If using Docker, it is generally easier to run VBox on the host directly.
+
+#### Run a VMware VM from a VMDK
+
+- Python script: `frontend/vmmanager_scripts/vmtool_vmmanager_run_vmware_vmdk.py`
+- vmt command: `vmmanager_run_vmware_vmdk`
+
+Usage (via vmt):
+
+```bash
+vmt -c vmmanager_run_vmware_vmdk \
+  --disk /path/to/disk.vmdk \
+  --cpus 2 \
+  --memory 2048 \
+  --name my-vm \
+  --vram 32 \
+  --guestos ubuntu22-64 \
+  [--vm-dir ~/vmware/my-vm] \
+  [--nic-model e1000|e1000e|vmxnet3] \
+  [--no-net] [--convert] [--nogui]
+```
+
+Notes:
+- VMware is a host hypervisor; `vmrun/vmplayer` and kernel modules must be installed on the host. Running VMware fully inside Docker is not recommended. Use the script to prepare the VM and launch commands on the host.
+
 
 ### Notes on permissions
 
