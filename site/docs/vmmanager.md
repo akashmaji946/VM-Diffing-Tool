@@ -4,6 +4,7 @@ This document explains how to use the VM launch/management helper scripts shippe
 
 Scripts are located in `frontend/vmmanager_scripts/` and are also exposed via the `vmt` CLI after installation.
 
+- Start a VBox VM: `vmtool_vmmanager_create_vbox_from_iso.py` → `vmt -c vmmanager_create_vbox_from_iso`
 - QEMU: `vmtool_vmmanager_run_qemu_vm.py` → `vmt -c vmmanager_run_qemu_vm`
 - VirtualBox: `vmtool_vmmanager_run_vbox_vm.py` → `vmt -c vmmanager_run_vbox_vm`
 - VMware: `vmtool_vmmanager_run_vmware_vmdk.py` → `vmt -c vmmanager_run_vmware_vmdk`
@@ -12,51 +13,50 @@ Scripts are located in `frontend/vmmanager_scripts/` and are also exposed via th
 
 ---
 
-## Run a QEMU VM
+## Start a VBox VM
 
-Script: `frontend/vmmanager_scripts/vmtool_vmmanager_run_qemu_vm.py`
+Script: `vmtool_vmmanager_create_vbox_from_iso.py`
 
 ```bash
-# via vmt
-vmt -c vmmanager_run_qemu_vm \
-  --disk /path/to/disk.qcow2 \
-  --cpus 2 \
-  --memory 2048 \
-  --name my-vm [--no-kvm] [--uefi] [--convert]
+sudo python3 vmtool_vmmanager_create_vbox_from_iso.py [-h] --iso ISO --vdi-dir VDI_DIR --vm-name
+                                                VM_NAME [--ostype OSTYPE] [--memory MEMORY]
+                                                [--cpus CPUS] [--disk-gb DISK_GB]
+                                                [--vram VRAM] [--nic {nat,bridged}]
+                                                [--boot-order BOOT_ORDER]
+                                                [--bridge-if BRIDGE_IF]
+```
 
-# direct
-python3 frontend/vmmanager_scripts/vmtool_vmmanager_run_qemu_vm.py \
-  --disk /path/to/disk.qcow2 \
-  --cpus 2 \
-  --memory 2048 \
-  --name my-vm
+## Run a QEMU VM
+
+Script: `vmtool_vmmanager_run_qemu_vm.py`
+
+```bash
+sudo python3 vmtool_vmmanager_run_qemu_vm.py [-h] --disk DISK --cpus CPUS --memory MEMORY --name NAME
+                                                [--no-kvm] [--uefi] [--convert]
 ```
 
 ---
 
 ## Run a VirtualBox VM (VDI)
 
-Script: `frontend/vmmanager_scripts/vmtool_vmmanager_run_vbox_vm.py`
+Script: `vmtool_vmmanager_run_vbox_vm.py`
 
 ```bash
-# via vmt
-vmt -c vmmanager_run_vbox_vm \
-  --disk /path/to/disk.vdi \
-  --cpus 2 \
-  --memory 2048 \
-  --name my-vm \
-  --vram 32 \
-  --ostype Ubuntu_64 [--bridged-if eth0] [--convert]
-
-# direct
-python3 frontend/vmmanager_scripts/vmtool_vmmanager_run_vbox_vm.py \
-  --disk /path/to/disk.vdi \
-  --cpus 2 \
-  --memory 2048 \
-  --name my-vm \
-  --vram 32 \
-  --ostype Ubuntu_64
+sudo python3 vmtool_vmmanager_run_vbox_vm.py [-h] --disk DISK --cpus CPUS --memory MEMORY --name NAME
+                                                [--vram VRAM] [--ostype OSTYPE] [--bridged-if BRIDGED_IF]
+                                                [--convert] [--nogui]
 ```
+
+## Run a VMware VM (VMDK)
+
+Script: `vmtool_vmmanager_run_vmware_vmdk.py`
+
+```bash
+sudo python3 vmtool_vmmanager_run_vmware_vmdk.py [-h] --disk DISK --cpus CPUS --memory MEMORY --name NAME
+                                                [--vram VRAM] [--ostype OSTYPE] [--bridged-if BRIDGED_IF]
+                                                [--convert] [--nogui]
+```
+
 
 Notes:
 - VirtualBox requires host kernel modules (`vboxdrv`, `vboxnetctl`).
