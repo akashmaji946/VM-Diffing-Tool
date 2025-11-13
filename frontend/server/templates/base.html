@@ -35,12 +35,29 @@
       gap: 0.9rem;
       box-shadow: 0 10px 30px rgba(0,0,0,0.35);
       border: 1px solid rgba(255,255,255,0.15);
+      min-width: 300px;
     }
     .spinner {
       width: 56px; height: 56px;
       border: 6px solid #fff; border-top-color: transparent;
       border-radius: 50%;
       animation: spin 0.9s linear infinite;
+    }
+    .loader-close-btn {
+      position: absolute;
+      top: 12px;
+      right: 14px;
+      background: transparent;
+      border: none;
+      font-size: 2rem;
+      color: #e51811;
+      cursor: pointer;
+      z-index: 10;
+      line-height: 1;
+    }
+
+    .loader-card {
+      position: relative; /* Ensure positioning context for button */
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -182,9 +199,9 @@
   </style>
 </head>
 <body>
-  <!-- Global loader overlay -->
   <div id="loaderOverlay" aria-hidden="true" aria-live="polite">
     <div class="loader-card">
+      <button class="loader-close-btn" aria-label="Close Loader Overlay" onclick="document.getElementById('loaderOverlay').style.display = 'none'">&times;</button>
       <div class="spinner" role="progressbar" aria-label="Loading"></div>
       <div class="msg mono">Please wait…</div>
     </div>

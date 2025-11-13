@@ -2,15 +2,33 @@
 {% block title %}Disk Meta{% endblock %}
 {% block content %}
 <h2>Disk Meta Data</h2>
-<form method="post">
-  <label>Disk Path
-    <input type="text" name="disk_path" value="{{ disk_path or '' }}" placeholder="/path/to/disk.qcow2" required />
+<p style="color: #1c49dc; margin-bottom: 2rem; font-size: 1.2rem;">View comprehensive disk metadata including file counts, total sizes, and per-user/group breakdowns</p>
+<form method="post" enctype="multipart/form-data">
+  <label>Please Enter <strong>Full Disk Path </strong> Location:
+    <input type="text" id="disk_path" name="disk_path" value="{{ disk_path or '' }}" placeholder="/path/to/disk.qcow2" required />
   </label>
+
+  <label>Or, Please Copy <strong>Full Disk Path </strong>Location:
+    <input type="file" id="disk_file" accept=".qcow2,.vdi,.vmdk" name="disk_file"/>
+  </label> 
+
   <label>
     <input type="checkbox" name="verbose" {% if verbose %}checked{% endif %} /> Verbose
   </label>
-  <button type="submit">Get Meta</button>
+  <button type="submit">Get Metadata of the Disk</button>
 </form>
+<script>
+document.getElementById('browse_btn').onclick = function(e) {
+  e.preventDefault();
+  document.getElementById('disk_file').click();
+};
+
+document.getElementById('disk_file').addEventListener('change', function(e) {
+  if (this.files && this.files[0]) {
+    document.getElementById('disk_path').value = this.files[0].name;
+  }
+});
+</script>
 
 {% if result is not none %}
   <div style="margin-bottom: 1rem;">
@@ -23,11 +41,30 @@
   </div>
   <h3>Totals</h3>
   <ul>
-    <li><strong>files_count</strong>: {{ result['files_count'] }}</li>
-    <li><strong>dirs_count</strong>: {{ result['dirs_count'] }}</li>
-    <li><strong>total_file_bytes</strong>: {{ result['total_file_bytes'] }}</li>
-    <li><strong>total_dir_bytes</strong>: {{ result['total_dir_bytes'] }}</li>
-    <li><strong>total_bytes</strong>: {{ result['total_bytes'] }}</li>
+    <!-- <li><strong>Files Count: </strong>: {{ result['files_count'] }}</li>
+    <li><strong>Directories Count: </strong>: {{ result['dirs_count'] }}</li>
+    <li><strong>Total Files Bytes: </strong>: {{ result['total_file_bytes'] }}</li>
+    <li><strong>Total Directories Bytes: </strong>: {{ result['total_dir_bytes'] }}</li>
+    <li><strong>Total Bytes: </strong>: {{ result['total_bytes'] }}</li> -->
+
+    <li>
+        <strong>Files Count: </strong>: {{ result['files_count'] }}
+      </li>
+      <li>
+        <strong>Directories Count: </strong>: {{ result['dirs_count'] }}
+      </li>
+      <li>
+        <strong>Total Files Bytes: </strong>: {{ result['total_file_bytes'] }} 
+        <span>({{ "%.2f"|format(result['total_file_bytes'] / (1024*1024)) }} MB)</span>
+      </li>
+      <li>
+        <strong>Total Directories Bytes: </strong>: {{ result['total_dir_bytes'] }} 
+        <span>({{ "%.2f"|format(result['total_dir_bytes'] / (1024*1024)) }} MB)</span>
+      </li>
+      <li>
+        <strong>Total Bytes: </strong>: {{ result['total_bytes'] }} 
+        <span>({{ "%.2f"|format(result['total_bytes'] / (1024*1024)) }} MB)</span>
+    </li>
   </ul>
 
   <h3>Per User</h3>

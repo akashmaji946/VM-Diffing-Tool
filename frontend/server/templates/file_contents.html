@@ -1,32 +1,105 @@
 {% extends 'base.html' %}
+
 {% block title %}File Contents{% endblock %}
+
 {% block content %}
 <h2>Read File Contents</h2>
+<p style="color: #1c49dc; margin-bottom: 2rem; font-size: 1.2rem;">Read and display the contents of any file inside a VM disk image</p>
+
 <form method="post">
   <div class="grid">
-    <label>Disk Path
+    <label>Please Enter <strong>Full Disk Path</strong> Location:
       <input type="text" name="disk_path" value="{{ disk_path or '' }}" placeholder="/path/to/disk.qcow2" required />
     </label>
-    <label>Guest File Path
+
+    <label>Please Enter <strong>Full Guest File Path</strong> Location:
       <input type="text" name="name" value="{{ name or '' }}" placeholder="/etc/hosts" required />
     </label>
   </div>
+
   <div class="grid">
     <label>Read bytes (-1 for all)
       <input type="number" name="read" value="{{ read or -1 }}" />
     </label>
+
     <label>Stop at substring
       <input type="text" name="stop" value="{{ stop or '' }}" />
     </label>
   </div>
+
   <label>
     <input type="checkbox" name="binary" {% if binary %}checked{% endif %} /> Binary
   </label>
+
   <button type="submit">Read</button>
 </form>
 
+
 {% if result is not none %}
   <h3>Result</h3>
-  <pre class="code mono">{{ result }}</pre>
+
+  <!-- Buttons -->
+  <div style="margin-bottom: 1em;">
+      <button type="button" id="downloadTxtBtn" class="outline">📥 Download TEXT</button>
+      <button type="button" id="downloadPdfBtn" class="outline">📄 Download PDF</button>
+  </div>
+
+  <!-- Output textarea -->
+  <textarea class="outline"
+      id="fileResult"
+      style="width:100%; height:400px; white-space:pre; font-family:monospace;"
+      readonly>{{ result }}</textarea>
+
 {% endif %}
+
+
+<!-- Lightweight jsPDF library -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<script>
+// -----------------------------
+// Download TXT
+// -----------------------------
+document.getElementById("downloadTxtBtn")?.addEventListener("click", () => {
+    const text = document.getElementById("fileResult").value;
+    const blob = new Blob([text], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "file_contents.txt";
+    a.click();
+
+    URL.revokeObjectURL(url);
+});
+
+// -----------------------------
+// Download PDF using jsPDF
+// -----------------------------
+document.getElementById("downloadPdfBtn")?.addEventListener("click", () => {
+    const text = document.getElementById("fileResult").value;
+    const { jsPDF } = window.jspdf;
+
+    const doc = new jsPDF({
+        unit: "pt",
+        format: "a4",
+    });
+
+    // Split long content into pages safely
+    const lines = doc.splitTextToSize(text, 550);
+    let y = 40;
+
+    lines.forEach(line => {
+        if (y > 800) {     // new page threshold
+            doc.addPage();
+            y = 40;
+        }
+        doc.text(line, 40, y);
+        y += 16;
+    });
+
+    doc.save("file_contents.pdf");
+});
+</script>
+
 {% endblock %}

@@ -2,6 +2,7 @@
 {% block title %}List Files{% endblock %}
 {% block content %}
 <h2>List Files With Metadata</h2>
+<p style="color: #1c49dc; margin-bottom: 2rem; font-size: 1.2rem;">List all files in a VM disk image with detailed metadata including size, permissions, and modification time</p>
 <style>
   /* AG Grid styling adjustments for both themes */
   .ag-theme-alpine,
@@ -15,8 +16,11 @@
   }
 </style>
 <form method="post">
-  <label>Disk Path
+  <label>Please Enter <strong>Full Disk Path </strong> Location:
     <input type="text" name="disk_path" value="{{ disk_path or '' }}" placeholder="/full/path/to/disk.qcow2" required />
+  </label>
+  <label>Or, Please Copy <strong>Full Disk Path </strong>Location:
+  <input type="file" id="disk_file" accept=".qcow2,.vdi,.vmdk" name="disk_file"/>
   </label>
   <label>
     <input type="checkbox" name="verbose" {% if verbose %}checked{% endif %} /> Verbose

@@ -4,7 +4,7 @@
 
 {% block content %}
 <h2>Compare Files In Directory</h2>
-<p>Compare file lists between two directories in VM disk images and view the differences.</p>
+<p style="color: #1c49dc; margin-bottom: 2rem; font-size: 1.2rem;">Compare file lists between two directories in VM disk images and view the differences.</p>
 
 <style>
   /* AG Grid styling adjustments for both themes */
@@ -49,25 +49,25 @@
 
 <form method="POST">
   <fieldset>
-    <legend>Disk Images and Directories</legend>
+    <!-- <legend>Disk Images and Directories</legend> -->
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
       <div>
         <label for="disk_path_1">
-          Disk 1 Path
+          Please Enter <strong>Full Disk Path</strong> Location (VM1):
           <input type="text" id="disk_path_1" name="disk_path_1" placeholder="/path/to/disk1.qcow2" required {% if result %}value="{{ result.disk1 }}"{% endif %} />
         </label>
         <label for="directory_1">
-          Directory 1 Path
+          Please Enter <strong>Full Directory Path</strong> Location (VM1):
           <input type="text" id="directory_1" name="directory_1" placeholder="/home/user" required {% if result %}value="{{ result.dir1 }}"{% endif %} />
         </label>
       </div>
       <div>
         <label for="disk_path_2">
-          Disk 2 Path
+          Please Enter <strong>Full Disk Path</strong> Location (VM2):
           <input type="text" id="disk_path_2" name="disk_path_2" placeholder="/path/to/disk2.qcow2" required {% if result %}value="{{ result.disk2 }}"{% endif %} />
         </label>
         <label for="directory_2">
-          Directory 2 Path
+          Please Enter <strong>Full Directory Path</strong> Location (VM2):
           <input type="text" id="directory_2" name="directory_2" placeholder="/home/user" required {% if result %}value="{{ result.dir2 }}"{% endif %} />
         </label>
       </div>

@@ -4,21 +4,20 @@
 
 {% block content %}
 <h2>Block Contents Compare</h2>
-<p>Enter two disk images, a block number, size, and format to view contents side by side.</p>
+<p style="color: #1c49dc; margin-bottom: 2rem; font-size: 1.2rem;">Enter two disk images, a block number, size, and format to view contents side by side.</p>
 
 <form method="POST">
   <fieldset>
-    <legend>Inputs</legend>
     <div class="grid">
       <div>
         <label for="disk_path_1">
-          Disk 1 Path (VM1)
+          Please Enter <strong>Full Disk Path</strong> Location (VM1):
           <input type="text" id="disk_path_1" name="disk_path_1" placeholder="/path/to/disk1.qcow2" required {% if result %}value="{{ result.disk1 }}"{% endif %} />
         </label>
       </div>
       <div>
         <label for="disk_path_2">
-          Disk 2 Path (VM2)
+          Please Enter <strong>Full Disk Path</strong> Location (VM2):
           <input type="text" id="disk_path_2" name="disk_path_2" placeholder="/path/to/disk2.qcow2" required {% if result %}value="{{ result.disk2 }}"{% endif %} />
         </label>
       </div>
@@ -27,19 +26,19 @@
     <div class="grid">
       <div>
         <label for="block_number">
-          Block Number
+          Please Enter <strong>Block Number</strong>:
           <input type="number" id="block_number" name="block_number" value="{% if result %}{{ result.block_number }}{% else %}0{% endif %}" min="0" required />
         </label>
       </div>
       <div>
         <label for="block_size">
-          Block Size (bytes)
+          Please Enter <strong>Block Size</strong> (bytes):
           <input type="number" id="block_size" name="block_size" value="{% if result %}{{ result.block_size }}{% else %}4096{% endif %}" min="512" step="512" required />
         </label>
       </div>
       <div>
         <label for="format">
-          Format
+          Please Select <strong>Format</strong>:
           <select id="format" name="format">
             <option value="hex" {% if result and result.format == 'hex' %}selected{% endif %}>Hex</option>
             <option value="bits" {% if result and result.format == 'bits' %}selected{% endif %}>Bits</option>
@@ -48,7 +47,8 @@
       </div>
     </div>
 
-    <button type="submit">Compare Blocks</button>
+    <button type="submit" id="compareBlocksBtn">Compare Blocks</button>
+
   </fieldset>
 </form>
 

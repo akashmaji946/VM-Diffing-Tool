@@ -2,18 +2,18 @@
 {% block title %}Convert Disk Image{% endblock %}
 {% block content %}
 <h2>Convert Disk Image</h2>
-<p>Use this form to convert between qcow2, vdi, vmdk, and raw formats.</p>
+<p style="color: #1c49dc; margin-bottom: 2rem; font-size: 1.2rem;">Convert between qcow2, vdi, vmdk, and raw formats.</p>
 <form method="post">
   <div class="grid">
-    <label>Source Image Path
+    <label>Please Enter <strong>Source Image Path</strong> Location:
       <input type="text" name="src_img" value="{{ src_img or '' }}" placeholder="/full/path/to/source.qcow2" required />
     </label>
-    <label>Destination Image Path
+    <label>Please Enter <strong>Destination Image Path</strong> Location:
       <input type="text" name="dest_img" value="{{ dest_img or '' }}" placeholder="/full/path/to/output.vdi" required />
     </label>
   </div>
   <div class="grid">
-    <label>Source Format
+    <label>Please Select <strong>Source Format</strong>:
       <select name="src_format" required>
         {% set formats = ['qcow2', 'vdi', 'vmdk', 'raw'] %}
         {% for fmt in formats %}
@@ -21,7 +21,7 @@
         {% endfor %}
       </select>
     </label>
-    <label>Destination Format
+    <label>Please Select <strong>Destination Format</strong>:
       <select name="dest_format" required>
         {% for fmt in formats %}
           <option value="{{ fmt }}" {% if dest_format == fmt %}selected{% endif %}>{{ fmt|upper }}</option>

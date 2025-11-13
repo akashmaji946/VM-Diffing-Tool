@@ -2,10 +2,14 @@
 {% block title %}Files JSON{% endblock %}
 {% block content %}
 <h2>Files As JSON</h2>
+<p style="color: #1c49dc; margin-bottom: 2rem; font-size: 1.2rem;">Get file listings as JSON format with numbered entries for easy programmatic access</p>
 <form method="post">
-  <label>Disk Path
+  <label>Please Enter <strong>Full Disk Path </strong> Location:
     <input type="text" name="disk_path" value="{{ disk_path or '' }}" placeholder="/path/to/disk.qcow2" required />
   </label>
+  <label>Or, Please Copy <strong>Full Disk Path </strong>Location:
+    <input type="file" id="disk_file" accept=".qcow2,.vdi,.vmdk" name="disk_file"/>
+  </label> 
   <label>
     <input type="checkbox" name="verbose" {% if verbose %}checked{% endif %} /> Verbose
   </label>

@@ -2,12 +2,14 @@
 {% block title %}Check Exists{% endblock %}
 {% block content %}
 <h2>Check If File Exists</h2>
+<p style="color: #1c49dc; margin-bottom: 2rem; font-size: 1.2rem;">Verify if a file exists in the guest image and get detailed file information</p>
+
 <form method="post">
   <div class="grid">
-    <label>Disk Path
+    <label>Please Enter <strong>Full Disk Path</strong> Location:
       <input type="text" name="disk_path" value="{{ disk_path or '' }}" placeholder="/path/to/disk.qcow2" required />
     </label>
-    <label>Guest File Path
+    <label>Please Enter <strong>Full Guest File Path</strong> Location:
       <input type="text" name="name" value="{{ name or '' }}" placeholder="/etc/hosts" required />
     </label>
   </div>
