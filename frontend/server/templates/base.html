@@ -121,7 +121,7 @@
       border-bottom: 1px solid rgba(127,127,127,0.25);
     }
     .topbar {
-      max-width: 1100px; margin: 0 auto; padding: 0.4rem 0.75rem;
+      max-width: auto; margin: 0 auto; padding: 0.4rem 0.75rem;
       display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 0.75rem;
     }
     .brand { display: flex; align-items: center; gap: 0.5rem; font-weight: 700; }
@@ -209,8 +209,9 @@
   <div class="topbar-wrap">
     <div class="topbar">
       <div class="brand">
-        <span>VM</span><span>Tool</span><span>Server</span>
-        <small>| v0.1</small>
+        <span>VM Tool Server</span>
+        <small> [Version 1.0]</small><br>
+        <!-- <span>Connected To:  <small id="show_ip">127.0.0.1</small></span> -->
       </div>
       <nav class="nav-links" aria-label="Primary">
         {% if current_user.is_authenticated %}

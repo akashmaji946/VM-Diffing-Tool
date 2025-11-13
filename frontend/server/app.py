@@ -90,6 +90,7 @@ print("""
 @app.route("/")
 @login_required
 def index() -> str:
+    # show ip
     return render_template("index.html")
 
 
