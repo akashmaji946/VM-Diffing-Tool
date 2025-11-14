@@ -63,24 +63,27 @@
       <tbody id="blockDataBody"></tbody>
     </table>
   </div>
-  <!-- Legacy raw view (hidden) -->
-  <div style="display:none">
-    <pre id="blockDataDisplay"></pre>
+
+  <!-- Buttons -->
+  <div style="margin-top: 1.5rem;">
+    <button id="downloadTextBtn">Download Text</button>
+    <button id="downloadPdfBtn">Download PDF</button>
   </div>
+
+  <!-- Hidden raw text storage -->
+  <textarea id="rawExportText" style="width:100%; height:200px; margin-top:1rem;"></textarea>
 </div>
 
+<!-- JS Libraries -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
 <script>
-// Check URL parameters for pre-filled values
+// URL Params prefill
 const urlParams = new URLSearchParams(window.location.search);
-if (urlParams.has('disk1')) {
-  document.getElementById('disk').value = urlParams.get('disk1');
-}
-if (urlParams.has('block')) {
-  document.getElementById('block_number').value = urlParams.get('block');
-}
-if (urlParams.has('size')) {
-  document.getElementById('block_size').value = urlParams.get('size');
-}
+if (urlParams.has('disk1')) document.getElementById('disk').value = urlParams.get('disk1');
+if (urlParams.has('block')) document.getElementById('block_number').value = urlParams.get('block');
+if (urlParams.has('size')) document.getElementById('block_size').value = urlParams.get('size');
 
 document.getElementById('blockDataForm').addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -91,7 +94,6 @@ document.getElementById('blockDataForm').addEventListener('submit', async (e) =>
   const block_size = parseInt(document.getElementById('block_size').value);
   const format = document.getElementById('format_bits').checked ? 'bits' : 'hex';
   
-  
   document.getElementById('error').style.display = 'none';
   document.getElementById('results').style.display = 'none';
   document.getElementById('fetchBtn').setAttribute('aria-busy', 'true');
@@ -100,33 +102,24 @@ document.getElementById('blockDataForm').addEventListener('submit', async (e) =>
   try {
     const response = await fetch('/api/block-data', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        disk,
-        block_number,
-        block_size,
-        format
-      })
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ disk, block_number, block_size, format })
     });
     
     const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Failed to fetch block data');
     
-    if (!response.ok) {
-      throw new Error(data.error || 'Failed to fetch block data');
-    }
-    
-    // Display metadata
     document.getElementById('blockNumber').textContent = block_number.toLocaleString();
     document.getElementById('diskPath').textContent = disk;
     document.getElementById('resultBlockSize').textContent = block_size.toLocaleString();
     document.getElementById('resultFormat').textContent = format.toUpperCase();
     
-    // Format and display block data in a table
     const blockData = data[block_number.toString()] || '';
     renderBlockTable(blockData, format);
-    
+
+    // Store raw text for export
+    document.getElementById('rawExportText').value = blockData;
+
     document.getElementById('results').style.display = 'block';
     
   } catch (error) {
@@ -141,17 +134,18 @@ document.getElementById('blockDataForm').addEventListener('submit', async (e) =>
   }
 });
 
+// Formatting helpers
 function toAsciiFromHexBytes(hexBytes){
   const bytes = hexBytes.map(h => parseInt(h, 16));
-  return bytes.map(b => (b >= 32 && b <= 126) ? String.fromCharCode(b) : '.').join('');
+  return bytes.map(b => (b >= 32 && b <= 126 ? String.fromCharCode(b) : '.')).join('');
 }
 
 function groupBits(bits, group=8){
-  const out=[]; for(let i=0;i<bits.length;i+=group){ out.push(bits.slice(i,i+group)); } return out.join(' ');
+  const out=[]; for(let i=0;i<bits.length;i+=group) out.push(bits.slice(i,i+group));
+  return out.join(' ');
 }
 
 function toAsciiFromBits(bits){
-  // bits string length is multiple of 8
   let ascii = '';
   for (let i=0; i<bits.length; i+=8){
     const byte = bits.slice(i, i+8);
@@ -166,13 +160,11 @@ function renderBlockTable(blockData, format){
   const tbody = document.getElementById('blockDataBody');
   tbody.innerHTML = '';
   if (!blockData){
-    const tr = document.createElement('tr');
-    tr.innerHTML = '<td colspan="3" style="padding:0.4rem; color:#ccc;">No data</td>';
-    tbody.appendChild(tr);
+    tbody.innerHTML = '<tr><td colspan="3" style="padding:0.4rem; color:#ccc;">No data</td></tr>';
     return;
   }
+
   if (format === 'hex'){
-    // rows of 16 bytes
     const hexBytes = blockData.trim().split(/\s+/);
     for (let i=0;i<hexBytes.length;i+=16){
       const row = hexBytes.slice(i, i+16);
@@ -180,29 +172,43 @@ function renderBlockTable(blockData, format){
       const ascii = toAsciiFromHexBytes(row);
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td style="padding:0.4rem; color:#000;">${offset.toString(16).toUpperCase().padStart(4,'0')}</td>
-        <td style="padding:0.4rem; color:#000;">${row.join(' ')}</td>
-        <td style="padding:0.4rem; color:#000;">${ascii}</td>
-      `;
+        <td style="padding:0.4rem;color:#000;">${offset.toString(16).toUpperCase().padStart(4,'0')}</td>
+        <td style="padding:0.4rem;color:#000;">${row.join(' ')}</td>
+        <td style="padding:0.4rem;color:#000;">${ascii}</td>`;
       tbody.appendChild(tr);
     }
   } else {
-    // rows of 64 bits (8 bytes)
     for (let i=0;i<blockData.length;i+=64){
       const rowBits = blockData.slice(i, i+64);
       const offsetBytes = Math.floor(i/8);
-      const grouped = groupBits(rowBits);
-      const ascii = toAsciiFromBits(rowBits);
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td style="padding:0.4rem; color:#000;">${offsetBytes.toString(16).toUpperCase().padStart(4,'0')}</td>
-        <td style="padding:0.4rem; color:#000;">${grouped}</td>
-        <td style="padding:0.4rem; color:#000;">${ascii}</td>
-      `;
+        <td style="padding:0.4rem;color:#000;">${offsetBytes.toString(16).toUpperCase().padStart(4,'0')}</td>
+        <td style="padding:0.4rem;color:#000;">${groupBits(rowBits)}</td>
+        <td style="padding:0.4rem;color:#000;">${toAsciiFromBits(rowBits)}</td>`;
       tbody.appendChild(tr);
     }
   }
 }
+
+// Download Text
+document.getElementById('downloadTextBtn').onclick = () => {
+  const text = document.getElementById('rawExportText').value;
+  const blob = new Blob([text], {type: "text/plain;charset=utf-8"});
+  saveAs(blob, "block_data.txt");
+};
+
+// Download PDF
+document.getElementById('downloadPdfBtn').onclick = () => {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: "pt", format: "a4" });
+
+  const text = document.getElementById('rawExportText').value;
+  const lines = doc.splitTextToSize(text, 550);
+
+  doc.text(lines, 30, 40);
+  doc.save("block_data.pdf");
+};
 </script>
 
 <style>
@@ -211,4 +217,5 @@ function renderBlockTable(blockData, format){
   color: #006400;
 }
 </style>
+
 {% endblock %}

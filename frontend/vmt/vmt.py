@@ -9,7 +9,7 @@ import os
 import subprocess
 from pathlib import Path
 
-VERSION = "0.2.0"
+VERSION = "1.0"
 
 
 def get_package_frontend_dir() -> Path:
@@ -18,6 +18,7 @@ def get_package_frontend_dir() -> Path:
     When running from source, this points to <repo>/frontend.
     When installed system-wide, this points inside site-packages and may
     not contain the script folders; in that case we'll fall back to other roots.
+
     """
     current_file = Path(__file__).resolve()
     return current_file.parent.parent  # vmt/ -> frontend/
@@ -98,8 +99,9 @@ def discover_commands() -> dict[str, Path]:
 
 def print_welcome() -> None:
     """Print welcome banner."""
-    print(f"Welcome to VMT {VERSION}")
+    print(f" >>> Welcome to VMT {VERSION} <<<")
     print("VM Diffing Tool - Utilities for inspecting VM disk images")
+    print("Author - Akash Maji | akashmaji@iisc.ac.in")
 
 
 def list_commands() -> int:

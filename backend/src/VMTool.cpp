@@ -1225,7 +1225,7 @@ pybind11::dict list_blocks_difference_in_disks(const std::string& disk_path1,
 
         for (uint64_t offset = start_offset; offset < end_offset; offset += block_size) {
             // Print progress every 100 blocks
-            if (block_num % 1 == 0) {
+            if (block_num % 100 == 0) {
                 py::print("Comparing block", block_num, "of", end_block_num);
             }
             

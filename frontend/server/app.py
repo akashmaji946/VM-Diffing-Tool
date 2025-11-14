@@ -254,6 +254,9 @@ def send_verification_email(user: User) -> None:
     token = user.generate_verification_token(app.config['SECRET_KEY'])
     # Use BASE_URL from config instead of url_for to avoid SERVER_NAME issues
     base_url = app.config.get('BASE_URL', 'http://127.0.0.1:8000')
+    # get IP of this machine
+    ip = request.remote_addr
+    base_url = f"http://{ip}:8000"
     verify_url = f"{base_url}/verify-email/{token}"
     
     msg = Message(

@@ -7,10 +7,10 @@
   <fieldset>
     <legend>First File</legend>
     <div class="grid">
-      <label>Disk Path 1
+      <label>Please Enter <strong>Full Disk Path</strong> Location (VM1):
         <input type="text" name="disk_path_1" value="{{ result.disk1 if result else '' }}" placeholder="/path/to/disk1.qcow2" required />
       </label>
-      <label>Guest File Path 1
+      <label>Please Enter <strong>Full Guest File Path</strong> Location (VM1):
         <input type="text" name="file_path_1" value="{{ result.path1 if result else '' }}" placeholder="/etc/hosts" required />
       </label>
     </div>
@@ -19,10 +19,10 @@
   <fieldset>
     <legend>Second File</legend>
     <div class="grid">
-      <label>Disk Path 2
+      <label>Please Enter <strong>Full Disk Path</strong> Location (VM2):
         <input type="text" name="disk_path_2" value="{{ result.disk2 if result else '' }}" placeholder="/path/to/disk2.qcow2" required />
       </label>
-      <label>Guest File Path 2
+      <label>Please Enter <strong>Full Guest File Path</strong> Location (VM2): 
         <input type="text" name="file_path_2" value="{{ result.path2 if result else '' }}" placeholder="/etc/hosts" required />
       </label>
     </div>

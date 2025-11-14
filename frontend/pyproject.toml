@@ -7,7 +7,7 @@ name = "vmt"
 version = "0.2.0"
 description = "VMT CLI for VM disk inspection using vmtool backend"
 authors = [
-  { name = "VMT Team" }
+  { name = "VMT Team (Akash Maji | akashmaji@iisc.ac.in)" }
 ]
 requires-python = ">=3.12"
 readme = "README.md"
