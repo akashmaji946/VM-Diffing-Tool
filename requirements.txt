@@ -22,5 +22,13 @@ Flask-SQLAlchemy
 Flask-Mail
 email-validator
 python-dotenv
+reportlab
+# guestfs
+pyvmomi
+gunicorn
+psycopg2-binary
+dataclasses-json
+faker
+
 
 # vmtool is a local pybind11 extension installed in your environment

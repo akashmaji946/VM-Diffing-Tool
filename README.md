@@ -23,6 +23,10 @@ Go to Docs here: [VM-Diffing-Tool Docs](https://akashmaji946.github.io/VM-Diffin
 - **Run VM**: Run a VM from a disk image
 - **Export Reports**: Export comparison results as JSON or PDF
 
+### Memory Analysis
+- **Create Memory Dump**: create memory dump of a running VM (VBox)
+- **Run various plugins**: run pslist, sockstat etc. to get info about processes, sockets etc.
+
 ### User Management
 - **Secure Authentication**: Email-based user registration with verification
 - **Gmail OAuth**: Automated email verification system
@@ -34,26 +38,52 @@ Go to Docs here: [VM-Diffing-Tool Docs](https://akashmaji946.github.io/VM-Diffin
 - **Interactive Tables**: AG Grid and DataTables for powerful data viewing
 - **Real-time Notifications**: Flash messages with dismissible alerts
 
+
+
+## 🎯 Quick Usage
+### Start the Server
+```bash
+cd frontend/server
+sudo python3 app.py
+```
+The server will start on `http://localhost:8000`
+
+
 ## 🏗️ Architecture
 
 ```
 VM-Diffing-Tool/
-├── backend/              # C++ core with pybind11 bindings
-│   ├── src/
-│   │   └── VMTool.cpp   # Core VM analysis logic
-│   ├── include/
-│   │   └── VMTool.hpp   # Header files
-│   └── pybind11/        # Python bindings submodule
-│   └── main.cpp        
+├── backend/                           # C++ core with pybind11 bindings
+│   ├── src/ (VMTool.cpp, …)           # Core VM analysis logic
+│   ├── include/ (VMTool.hpp, …)       # Headers
+│   ├── pybind11/                      # Python binding helpers
+│   └── main.cpp                       # pybind11 module definition
 ├── frontend/
-|   ├── vmt/             # CLI tool
-│   ├── server/          # Flask web application
-│   │   ├── app.py       # Main Flask application
-│   │   ├── models.py    # Database models
-│   │   ├── config.py    # Configuration
-│   │   └── templates/   # HTML templates
-│   └── vmtool_scripts/  # Frontend scripts
-└── guestfs/             # Libguestfs Python bindings
+│   ├── server/                        # Flask web application
+│   │   ├── .cache/
+│   │   ├── .env / .env.sample         # Environment variables
+│   │   ├── EMAIL_SETUP.md
+│   │   ├── README.md                  # Server-specific instructions
+│   │   ├── app.py                     # Main Flask app
+│   │   ├── volatility_routes.py       # Volatility blueprint integration
+│   │   ├── config.py                  # Configuration
+│   │   ├── models.py                  # Database models
+│   │   ├── gmail_oauth.py             # Gmail OTP helper
+│   │   ├── requirements.txt           # Web dependencies
+│   │   ├── sanity.py                  # Simple health script
+│   │   ├── vmtool_flask_app.py        # Legacy vmtool-only server
+│   │   ├── database/                  # SQLite artifacts
+│   │   ├── frontend/                  # Static frontend bundle
+│   │   ├── templates/                 # HTML templates (base, auth, etc.)
+│   │   └── volatility_app/            # Legacy volatility UI assets
+│   ├── vmt/                           # CLI utilities for VM diffing
+│   └── vmtool_scripts/                # Helper scripts for disk analysis
+├── volatility3/                       # Volatility3 fork + scripts
+│   ├── vol.py                         # Upstream Volatility entry point
+│   └── web/                           # Legacy web UI, parsers, shell scripts
+├── guestfs/                           # Libguestfs Python bindings
+├── releases/                          # Prebuilt vmtool wheels/binaries
+└── requirements.txt                   # Root Python dependencies
 ```
 
 ## 🚀 Installation

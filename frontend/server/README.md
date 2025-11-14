@@ -19,15 +19,15 @@ A lightweight Flask server that wraps the Python `vmtool` module (pybind11 C++ b
 ```bash
 # from backend/build
 cmake ..
-make -j$(nproc)
+make -j4
 make install  # might require sudo depending on your CMake config
 ```
 
 2. Create and activate a virtual environment, then install server deps:
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
+python3 -m venv .vm
+source .vm/bin/activate
 pip install -r requirements.txt
 ```
 
@@ -35,8 +35,8 @@ pip install -r requirements.txt
 
 ```bash
 export FLASK_APP=app.py
-python app.py
-# Open http://localhost:5000
+sudo python app.py
+# Open http://localhost:8000
 ```
 
 ## Notes
