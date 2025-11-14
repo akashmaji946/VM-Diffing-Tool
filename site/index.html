@@ -11,6 +11,7 @@
     main { padding: 0.9rem; }
     .gb-wrap { display: grid; grid-template-columns: 240px 1fr; gap: 0; min-height: calc(100vh - 3rem); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin: 1rem auto; width: min(1200px, calc(100% - 2rem)); background: var(--pico-card-background-color); }
     .gb-sidebar { background: var(--pico-card-background-color); border-right: 1px solid var(--border); padding: 0.6rem; }
+    .gb-sidebar nav { max-height: calc(100vh - 8rem); overflow-y: auto; }
     .gb-sidebar .search { width: 100%; margin-bottom: 0.5rem; font-size: 0.82rem; }
     .gb-sidebar a { display: block; padding: 0.35rem 0.55rem; border-radius: 6px; text-decoration: none; color: var(--pico-primary); font-size: 0.82rem; }
     .gb-sidebar a.active { background: rgba(127,127,127,0.12); font-weight: 200; }
@@ -21,6 +22,29 @@
     .markdown-body code { background: rgba(127,127,127,0.12); padding: 0.08rem 0.28rem; border-radius: 4px; font-size: 0.82rem; }
     header h2 { text-align: center; margin: 0.5rem 0 0.25rem; }
     header p { text-align: center; color: #888; margin: 0 0 1rem; }
+
+    @media (max-width: 900px) {
+      .gb-wrap { width: min(100%, calc(100% - 1rem)); grid-template-columns: 220px 1fr; }
+    }
+
+    @media (max-width: 720px) {
+      body { font-size: 0.95rem; }
+      .gb-wrap { grid-template-columns: 1fr; min-height: unset; margin: 0.5rem; border-radius: 0.75rem; }
+      .gb-sidebar { border-right: none; border-bottom: 1px solid var(--border); }
+      .gb-sidebar nav { max-height: none; display: flex; flex-wrap: wrap; gap: 0.4rem; }
+      .gb-sidebar a { flex: 1 1 calc(50% - 0.4rem); font-size: 0.78rem; }
+      .gb-content { padding: 0.9rem; }
+      .gb-content .markdown-body { max-width: 100%; font-size: 0.95rem; }
+    }
+
+    @media (max-width: 520px) {
+      .gb-sidebar nav { flex-direction: column; }
+      .gb-sidebar a { flex: 1 1 100%; }
+      .gb-sidebar .search { font-size: 0.78rem; }
+      main { padding: 0.5rem; }
+      header h2 { font-size: 1.35rem; }
+      header p { font-size: 0.9rem; }
+    }
   </style>
 </head>
 <body>
