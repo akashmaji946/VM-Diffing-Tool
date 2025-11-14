@@ -105,3 +105,5 @@ sudo apt-get install virtualbox-dkms
 Refer official docs for more details:
 - [VirtualBox](https://www.virtualbox.org/wiki/Downloads)
 - [VMware](https://www.vmware.com)
+
+Need to capture RAM snapshots or run Volatility plugins after your VM is up? See the [Memory Analysis](memory-analysis.md) guide for the full workflow.
