@@ -36,9 +36,11 @@ import vmtool  # type: ignore
 
 from config import Config
 from models import db, User
+from volatility_routes import volatility_bp
 
 app = Flask(__name__)
 app.config.from_object(Config)
+app.register_blueprint(volatility_bp, url_prefix="/volatility")
 DOCS_BASE_URL = os.environ.get("DOCS_BASE_URL", "https://akashmaji946.github.io/VM-Diffing-Tool/")
 
 # Initialize extensions
